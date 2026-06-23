@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CONNECT AI - Posture & Movement Analytics Engine</title>
+    
+    <!-- Design System CSS Link -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- CDN Libraries (TensorFlow.js + BlazePose + Chart.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- 1. Video & Main Analysis Drawing Canvas -->
+<div class="view-port">
+    <canvas id="canvasMP"></canvas>
+    
+    <!-- Header Title Label -->
+    <div class="label">CONNECT AI - Bio-Scan v76.2</div>
+    
+    <!-- Calibration Scale Status Panel -->
+    <div class="info-panel" id="infoPanel">スケール未校正<br>大転子-ASIS基準: 未測定</div>
+    
+    <!-- Recording Countdown Display -->
+    <div id="timerDisplay" class="timer-display">REC 10.0s</div>
+    
+    <!-- Center of Pressure (COP) Sway Radar -->
+    <div id="radarWrapperMP" class="radar-wrapper">
+        <div class="radar-title">COP SWAY RADAR</div>
+        <canvas id="canvasRadarMP" class="radar-box" width="150" height="150"></canvas>
+    </div>
+</div>
+
+<!-- 2. Spine & Pelvic Silhouette Matching Slider Overlay -->
+<div id="tiltPanel">
+    <div class="tilt-header">📐 骨盤・背中アライメント調整</div>
+    <div style="display:flex; justify-content:space-between; color:#8a99ad; font-size:9px; margin-bottom: 4px;">
+        <span>後傾 (-20°)</span>
+        <span>前傾 (+30°)</span>
+    </div>
+    <input type="range" id="pelvicTiltSlider" class="tilt-slider" min="-20" max="30" value="0">
+    <div class="tilt-val" id="tiltValDisplay">0° (ニュートラル)</div>
+    <p style="font-size:10px; color: var(--text-muted); line-height: 1.4; margin-top:10px; margin-bottom: 0;">
+        ※被験者の実際の背中やお尻の輪郭に重なるようスライダーを調整してください。
+    </p>
+</div>
+
+<!-- 3. Keypoint Micro-Adjustment D-Pad Panel -->
+<div id="dpadPanel">
+    <div class="dpad-header">
+        <span id="dpadTitle">🎯 関節微調整</span>
+        <button class="dpad-close" id="dpadClose">✖</button>
+    </div>
+    <div class="dpad-row">
+        <button class="dpad-btn" id="dpadUp">▲</button>
+    </div>
+    <div class="dpad-row">
+        <button class="dpad-btn" id="dpadLeft">◀</button>
+        <button class="dpad-btn" id="dpadStep" style="font-size:12px; background:#1976d2; color:white; border:none; width: 50px;">1px</button>
+        <button class="dpad-btn" id="dpadRight">▶</button>
+    </div>
+    <div class="dpad-row">
+        <button class="dpad-btn" id="dpadDown">▼</button>
+    </div>
+</div>
+
+<!-- 4. Session History Sidebar Panel -->
+<div id="historyPanel">
+    <div class="history-header">
+        <span>📂 過去の測定データ履歴</span>
+        <button id="closeHistoryBtn">✖</button>
+    </div>
+    <div class="history-list" id="historyListContainer"></div>
+</div>
+
+<!-- 5. Dynamic Biomechanical Report Dashboard Overlay -->
+<div id="dashboardOverlay">
+    <div class="dash-header">
+        <div>
+            <h2 class="dash-title">📊 統合バイオメカニクス姿勢動作評価レポート</h2>
+            <div style="color:var(--text-muted); font-size: 13px; margin-top:5px;">CONNECT AI Posture & Movement Analytics - Digital Report</div>
+        </div>
+        <div>
+            <button class="dash-print" onclick="window.print()">📄 PDF保存・カルテ印刷</button>
+            <button class="dash-close" onclick="document.getElementById('dashboardOverlay').style.display='none'">✖ 閉じる</button>
+        </div>
+    </div>
+    <div class="dash-grid" id="dashGrid"></div>
+</div>
+
+<!-- 6. Custom Alert & Confirm Dialog Modal Container -->
+<div id="customModal">
+    <div class="modal-box">
+        <h3 id="modalTitle" class="modal-title"></h3>
+        <p id="modalMessage" class="modal-body"></p>
+        <div class="modal-footer">
+            <button id="modalCancelBtn" class="modal-btn modal-cancel">キャンセル</button>
+            <button id="modalOkBtn" class="modal-btn modal-ok">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- 7. Main Floating Interaction Control Layer -->
+<div id="uiFloatingLayer">
+    <!-- Top Action Shortcuts -->
+    <div class="ui-top-buttons">
+        <button id="toggleUiBtn" class="ui-top-btn">🔽 UIを隠す</button>
+        <button id="showHistoryBtn" class="ui-top-btn">📂 履歴を開く</button>
+        <button id="showDashboardBtn" class="ui-top-btn dash-top-btn" onclick="window.prepareAndPrintReport()">📊 ダッシュボード</button>
+    </div>
+    
+    <!-- Dynamic controls boxes -->
+    <div id="controlsBox">
+        <!-- A. Camera Stream Control Panel -->
+        <div class="controls" id="mainControls">
+            <select id="videoSource">
+                <option value="">カメラ検索中...</option>
+            </select>
+
+            <button id="startBtn" disabled>⏳ 起動準備中...</button>
+            
+            <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
+                <span style="color:var(--text-sub); font-size:12px; font-weight:700;">被験者身長</span>
+                <input type="number" id="patientHeight" value="170" style="width:50px; background:transparent; color:var(--accent-cyan); border:none; text-align:center; font-size:14px; font-weight:700; border-bottom:1px solid rgba(255,255,255,0.2);">
+                <span style="color:var(--text-muted); font-size:12px;">cm</span>
+            </div>
+            
+            <button id="calibrateMatBtn">📏 マット校正</button>
+
+            <!-- Mode Selector -->
+            <select id="modeSelect" class="mode-dropdown" onchange="window.switchReportTab(this.value)">
+                <optgroup label="■ 静的姿勢アライメント">
+                    <option value="front" selected>🧍 前面（静的アライメント）</option>
+                    <option value="back">🧍 後面（静的アライメント）</option>
+                    <option value="l_side">🧍 左側面（ケンダル分析）</option>
+                    <option value="r_side">🧍 右側面（ケンダル分析）</option>
+                </optgroup>
+                <optgroup label="■ 動的動作分析評価">
+                    <option value="dyn_overhead">🏋️ OHS [前面スクワット]</option>
+                    <option value="dyn_overhead_side">🏋️ OHS [側面スクワット]</option>
+                    <option value="dyn_single_r">🦵 片脚バランス [右脚軸]</option>
+                    <option value="dyn_single_l">🦵 片脚バランス [左脚軸]</option>
+                    <option value="dyn_flex_fwd">🙇 立位体前屈 (屈曲可動域)</option>
+                    <option value="dyn_flex_bwd">🤸 立位体後屈 (伸展可動域)</option>
+                    <option value="dyn_shoulder_r">👐 肩複合可動性 [右上オーバー]</option>
+                    <option value="dyn_shoulder_l">👐 肩複合可動性 [左上オーバー]</option>
+                </optgroup>
+            </select>
+            
+            <select id="durationSelect" style="width: 95px;">
+                <option value="5000" selected>⏱️ 5秒記録</option>
+                <option value="10000">⏱️ 10秒記録</option>
+                <option value="15000">⏱️ 15秒記録</option>
+            </select>
+            
+            <label class="toggle-label">
+                <input type="checkbox" id="showSwayAlert" checked>
+                <span>動揺警告</span>
+            </label>
+            
+            <button id="recBtn" disabled>🔴 測定スタート</button>
+        </div>
+
+        <!-- B. Recording Playback Control Panel (Initially Hidden) -->
+        <div class="controls" id="playbackControls" style="display:none;">
+            <button id="backToCamBtn">🔙 再測定へ</button>
+            <button id="playPauseBtn">▶ 再生</button>
+            <input type="range" id="timelineSlider" min="0" max="100" value="0">
+            <span id="frameCounter" style="color:var(--accent-cyan); font-weight:800; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 60px; text-align: center;">0 / 0</span>
+            <button id="editFrameBtn">✂️ 微調整</button>
+            <button id="exportVideoBtn" style="margin-left:auto;">🎥 動画出力</button>
+            <button id="printReportBtn" onclick="window.prepareAndPrintReport()">📊 レポート表示</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden native elements -->
+<video id="video" autoplay playsinline muted></video>
+
+<!-- Load Main Script App Core Logic -->
+<script src="app.js"></script>
+
+</body>
+</html>
