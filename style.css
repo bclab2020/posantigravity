@@ -1511,80 +1511,91 @@ select:hover { border-color: var(--accent-blue); }
         border: none;
         border-radius: 0;
         box-shadow: none;
-        background: var(--bg-primary);
+        /* 画面全体で統一されたグラデーション背景 */
+        background: radial-gradient(circle at 30% 50%, #0d1e36 0%, #040710 100%);
+        /* グリッドを画面全体に適用して一体感を出す */
+        background-image: 
+            radial-gradient(rgba(100, 255, 218, 0.05) 1.5px, transparent 1.5px),
+            linear-gradient(to right, rgba(100, 255, 218, 0.012) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(100, 255, 218, 0.012) 1px, transparent 1px);
+        background-size: 32px 32px, 32px 32px, 32px 32px;
+        background-position: center;
         padding: 0;
         overflow: hidden;
     }
     
-    /* 左側：ブランド・タイトルエリア */
+    /* 左側：ブランド・タイトルエリア（浮かせる配置に変更） */
     .auth-modal .modal-header {
         position: absolute;
-        left: 0; top: 0;
-        width: 50%;
-        height: 100%;
+        left: 8%; top: 50%;
+        transform: translateY(-50%);
+        width: 40%;
         margin-bottom: 0;
         border-bottom: none;
-        border-right: 1px solid rgba(100, 255, 218, 0.15);
-        padding: 40px;
+        border-right: none; /* 境界線を消去して一体感を出す */
+        padding: 0;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        align-items: center;
-        background: radial-gradient(circle at center, #0f203a 0%, var(--bg-primary) 100%);
-        /* ハイテク感のある座標グリッド背景 */
-        background-image: 
-            radial-gradient(rgba(100, 255, 218, 0.08) 1.5px, transparent 1.5px),
-            linear-gradient(to right, rgba(100, 255, 218, 0.02) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(100, 255, 218, 0.02) 1px, transparent 1px);
-        background-size: 30px 30px, 30px 30px, 30px 30px;
-        background-position: center;
+        align-items: flex-start; /* 左寄せにして洗練された印象に */
+        background: transparent; /* 背景を透明にして一体化 */
+        text-align: left;
     }
 
     .auth-modal .modal-header .auth-modal-logo {
-        transform: scale(1.25);
-        margin-bottom: 24px;
-        box-shadow: 0 0 25px rgba(100, 255, 218, 0.35);
+        align-self: flex-start;
+        transform: scale(1.2);
+        transform-origin: left center;
+        margin-bottom: 30px;
+        box-shadow: 0 0 25px rgba(100, 255, 218, 0.3);
     }
 
     .auth-modal .modal-header h3 {
-        font-size: 26px;
-        line-height: 1.4;
+        font-size: 32px;
+        line-height: 1.3;
         margin-top: 10px;
         color: var(--text-primary);
-        text-shadow: 0 0 15px rgba(0, 191, 255, 0.25);
+        text-shadow: 0 0 20px rgba(0, 191, 255, 0.25);
         font-family: 'Outfit', sans-serif;
     }
 
     /* キャッチフレーズの追加 */
     .auth-modal .modal-header::after {
         content: "High-Performance Motion Scan & Analytics Engine";
-        font-size: 12px;
+        font-size: 13px;
         color: var(--text-secondary);
-        margin-top: 12px;
-        max-width: 280px;
-        text-align: center;
+        margin-top: 16px;
+        max-width: 320px;
+        text-align: left;
         line-height: 1.5;
-        opacity: 0.7;
+        opacity: 0.65;
         letter-spacing: 0.5px;
     }
 
-    /* 右側：フォーム入力エリア */
+    /* 右側：フォーム入力エリア（グラスモルフィズムのカードとして浮かせる） */
     .auth-modal .modal-body {
         position: absolute;
-        right: 0; top: 0;
-        width: 50%;
-        height: 100%;
-        padding: 40px 60px;
+        right: 8%; top: 50%;
+        transform: translateY(-50%);
+        width: 440px;
+        max-height: 85vh;
+        padding: 40px;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        background: var(--bg-secondary);
+        justify-content: flex-start;
+        /* グラスモルフィズム・カードスタイル */
+        background: rgba(10, 17, 40, 0.72);
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+        border: 1px solid rgba(100, 255, 218, 0.12);
+        border-radius: var(--radius-lg);
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
         overflow-y: auto;
     }
 
-    /* 入力フォーム幅の制限と中央配置 */
+    /* 内部要素の幅制限を解除 */
     .auth-modal #authSignupForm,
     .auth-modal #authSignupConfirm,
     .auth-modal #authLoginForm,
@@ -1592,10 +1603,10 @@ select:hover { border-color: var(--accent-blue); }
     .auth-modal .auth-tabs,
     .auth-modal .error-text,
     .auth-modal .help-text {
-        max-width: 380px;
+        max-width: 100%;
         width: 100%;
-        margin-left: auto;
-        margin-right: auto;
+        margin-left: 0;
+        margin-right: 0;
     }
     
     .auth-modal .auth-tabs {
