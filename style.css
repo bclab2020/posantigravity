@@ -1496,133 +1496,138 @@ select:hover { border-color: var(--accent-blue); }
 }
 
 /* =============================================================================
-   PC・タブレット向けスプリットレイアウト (レスポンシブ対応)
+   ログイン・会員登録画面（フュージョン・中央カードレイアウト）
    ========================================================================== */
-@media (min-width: 768px) {
-    /* 会員登録・ログインダイアログを画面分割型のフルスクリーンにする */
-    .auth-modal {
-        position: fixed;
-        top: 0; left: 0;
-        transform: none;
-        width: 100vw;
-        height: 100dvh;
-        max-width: 100vw;
-        max-height: 100dvh;
-        border: none;
-        border-radius: 0;
-        box-shadow: none;
-        /* 画面全体で統一されたグラデーション背景 */
-        background: radial-gradient(circle at 30% 50%, #0d1e36 0%, #040710 100%);
-        /* グリッドを画面全体に適用して一体感を出す */
-        background-image: 
-            radial-gradient(rgba(100, 255, 218, 0.05) 1.5px, transparent 1.5px),
-            linear-gradient(to right, rgba(100, 255, 218, 0.012) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(100, 255, 218, 0.012) 1px, transparent 1px);
-        background-size: 32px 32px, 32px 32px, 32px 32px;
-        background-position: center;
-        padding: 0;
-        overflow: hidden;
-    }
+
+/* 全画面背景オーバーレイ（ログイン前） */
+.auth-modal {
+    position: fixed;
+    top: 0; left: 0;
+    transform: none;
+    width: 100vw;
+    height: 100dvh;
+    max-width: 100vw;
+    max-height: 100dvh;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    /* 画面全体で統一されたグラデーション背景 */
+    background: radial-gradient(circle at center, #0d1e36 0%, #040710 100%);
+    /* グリッドを画面全体に適用して一体感を出す */
+    background-image: 
+        radial-gradient(rgba(100, 255, 218, 0.05) 1.5px, transparent 1.5px),
+        linear-gradient(to right, rgba(100, 255, 218, 0.012) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(100, 255, 218, 0.012) 1px, transparent 1px);
+    background-size: 32px 32px, 32px 32px, 32px 32px;
+    background-position: center;
     
-    /* 左側：ブランド・タイトルエリア */
-    .auth-modal .modal-header {
-        position: absolute;
-        left: 6%; top: 50%;
-        transform: translateY(-50%);
-        width: 40%;
-        margin-bottom: 0;
-        border-bottom: none;
-        border-right: none;
-        padding: 0;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: flex-start; /* 左寄せ */
-        background: transparent;
-        text-align: left;
-    }
-
-    .auth-modal .modal-header .auth-modal-logo {
-        align-self: flex-start;
-        transform: scale(1.2);
-        transform-origin: left center;
-        margin-bottom: 30px;
-        box-shadow: 0 0 25px rgba(100, 255, 218, 0.3);
-    }
-
-    .auth-modal .modal-header h3 {
-        font-size: 30px;
-        line-height: 1.3;
-        margin-top: 10px;
-        color: var(--text-primary);
-        text-shadow: 0 0 20px rgba(0, 191, 255, 0.25);
-        font-family: 'Outfit', sans-serif;
-    }
-
-    /* キャッチフレーズの追加 */
-    .auth-modal .modal-header::after {
-        content: "High-Performance Motion Scan & Analytics Engine";
-        font-size: 13px;
-        color: var(--text-secondary);
-        margin-top: 16px;
-        max-width: 320px;
-        text-align: left;
-        line-height: 1.5;
-        opacity: 0.65;
-        letter-spacing: 0.5px;
-    }
-
-    /* 右側：フォーム入力エリア（グラスモルフィズムのカード） */
-    .auth-modal .modal-body {
-        position: absolute;
-        right: 6%; top: 50%;
-        transform: translateY(-50%);
-        width: 440px;
-        max-height: 85vh;
-        padding: 40px;
-        box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        background: rgba(10, 17, 40, 0.72);
-        backdrop-filter: blur(25px);
-        -webkit-backdrop-filter: blur(25px);
-        border: 1px solid rgba(100, 255, 218, 0.12);
-        border-radius: var(--radius-lg);
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-        overflow-y: auto;
-    }
-
-    .auth-modal #authSignupForm,
-    .auth-modal #authSignupConfirm,
-    .auth-modal #authLoginForm,
-    .auth-modal #authGuestForm,
-    .auth-modal .auth-tabs,
-    .auth-modal .error-text,
-    .auth-modal .help-text {
-        max-width: 100%;
-        width: 100%;
-        margin-left: 0;
-        margin-right: 0;
-    }
-    
-    .auth-modal .auth-tabs {
-        margin-bottom: 24px;
-    }
+    /* 子要素を縦方向に中央配置 */
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+    z-index: var(--z-modal);
 }
 
-/* 1024px以上のPCデスクトップ幅：中央寄せに固定し、余白のバランスを最適化 */
-@media (min-width: 1024px) {
-    .auth-modal .modal-header {
-        left: auto;
-        right: calc(50% + 50px); /* 画面中央から左に50pxの位置を右端にする */
-        width: 420px;
-    }
-    
-    .auth-modal .modal-body {
-        right: auto;
-        left: calc(50% + 50px); /* 画面中央から右に50pxの位置を左端にする */
-        width: 440px;
-    }
+/* JavaScript (openModal) による表示状態の時のレイアウト上書き */
+.auth-modal[style*="block"] {
+    display: flex !important;
+}
+
+/* 上半分のカード（ブランド・ヘッダー） */
+.auth-modal .modal-header {
+    width: 90%;
+    max-width: 460px;
+    background: rgba(10, 17, 40, 0.75);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border-top: 1px solid rgba(100, 255, 218, 0.15);
+    border-left: 1px solid rgba(100, 255, 218, 0.15);
+    border-right: 1px solid rgba(100, 255, 218, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05); /* 上下を隔てる非常に薄い境界線 */
+    border-top-left-radius: var(--radius-lg);
+    border-top-right-radius: var(--radius-lg);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    padding: 30px 30px 10px 30px;
+    margin: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+}
+
+.auth-modal .modal-header .auth-modal-logo {
+    transform: scale(1.1);
+    margin-bottom: 16px;
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
+}
+
+.auth-modal .modal-header h3 {
+    font-size: 22px;
+    line-height: 1.3;
+    margin: 8px 0;
+    color: var(--text-primary);
+    text-shadow: 0 0 15px rgba(0, 191, 255, 0.25);
+    font-family: 'Outfit', sans-serif;
+}
+
+/* キャッチフレーズの追加 */
+.auth-modal .modal-header::after {
+    content: "High-Performance Motion Scan & Analytics Engine";
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    max-width: 280px;
+    text-align: center;
+    line-height: 1.4;
+    opacity: 0.6;
+    letter-spacing: 0.5px;
+}
+
+/* 下半分のカード（入力フォーム） */
+.auth-modal .modal-body {
+    width: 90%;
+    max-width: 460px;
+    background: rgba(10, 17, 40, 0.75);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border-bottom: 1px solid rgba(100, 255, 218, 0.15);
+    border-left: 1px solid rgba(100, 255, 218, 0.15);
+    border-right: 1px solid rgba(100, 255, 218, 0.15);
+    border-top: none;
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    padding: 20px 30px 35px 30px;
+    margin: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    overflow-y: visible;
+}
+
+/* フォームの横幅をカード幅いっぱいにフィットさせる */
+.auth-modal #authSignupForm,
+.auth-modal #authSignupConfirm,
+.auth-modal #authLoginForm,
+.auth-modal #authGuestForm,
+.auth-modal .auth-tabs,
+.auth-modal .error-text,
+.auth-modal .help-text {
+    max-width: 100%;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+.auth-modal .auth-tabs {
+    margin-bottom: 20px;
 }
