@@ -1,0 +1,1496 @@
+/* =============================================================================
+   ÉLITE PERFORMANCE - Athletecore Pro | style.css (v3.0.0 再構築版)
+   -----------------------------------------------------------------------------
+   設計方針:
+   - デザイントークン(CSS変数)を先頭にまとめ、色/間隔の変更を1箇所で完結させる
+   - レイアウトは可能な限り Grid/Flexbox のカスケードで解決し、!important の
+     多用（旧版の主要な保守性の問題）を廃止する
+   - 5つ以上重複していたモーダル構造は共通 .modal-panel をベースに統一する
+   - ブレークポイントは 3段階（モバイル/タブレット/専門家ワイドPC）に整理し、
+     旧版で発生していた重複定義・競合を解消する
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+
+:root {
+    --bg-primary: #050811;
+    --bg-secondary: #0a1128;
+    --bg-card: rgba(16, 28, 48, 0.7);
+    --bg-input: #0f1c3f;
+    --border-color: rgba(100, 255, 218, 0.15);
+
+    --accent-teal: #64ffda;
+    --accent-blue: #00bfff;
+    --accent-orange: #ff9100;
+    --accent-red: #ff5252;
+    --accent-green: #39ff14;
+    --accent-purple: #8a2be2;
+
+    --text-primary: #f8f9fa;
+    --text-secondary: #8892b0;
+
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+
+    --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: 'Roboto Mono', monospace;
+
+    --z-hud: 10;
+    --z-floating: 100;
+    --z-dpad: 500;
+    --z-history: 800;
+    --z-modal: 2000;
+    --z-dashboard: 3000;
+
+    --nav-size: 68px;
+
+    /* 2026-08-03: 履歴・撮影確認画面からの再生・微調整中に、下部の操作
+       パネル(#uiFloatingLayer)の実測高さをJS側(controls.jsの
+       updateReviewLayoutMode)から書き込むための変数。ライブ撮影中は
+       参照されないため0pxのままで問題ない。 */
+    --review-controls-height: 0px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    overflow: hidden;
+}
+
+button, select, input, textarea {
+    font-family: var(--font-sans);
+    padding: 10px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+/* =============================================================================
+   アプリシェル: ページルーティング + ナビゲーション
+   -----------------------------------------------------------------------------
+   スマホ幅では下部タブバー、タブレット幅以上では左サイドレールに切り替わる
+   共通ナビ(#appNav)と、hashルーターが表示/非表示を切り替えるページ
+   コンテナ(.app-page)で構成する。専門家モード時はナビの項目セットを
+   差し替える（body.specialist-unlockedで出し分け）。
+   ========================================================================== */
+
+#appRoot {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100dvh;
+    background-color: var(--bg-primary);
+    overflow: hidden;
+}
+
+#pageHost {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.app-page {
+    display: none;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+}
+.app-page.active { display: block; }
+
+#appNav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: var(--nav-size);
+    display: flex;
+    background: rgba(10, 17, 40, 0.97);
+    backdrop-filter: blur(15px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    z-index: 1800;
+}
+.nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    border-radius: 0;
+    padding: 6px 2px;
+}
+.nav-item .nav-icon { font-size: 19px; line-height: 1; }
+.nav-item.active { color: var(--accent-teal); }
+.nav-item.active .nav-icon { filter: drop-shadow(0 0 6px rgba(100,255,218,0.6)); }
+
+body.specialist-unlocked #appNav { border-top-color: rgba(255, 145, 0, 0.25); }
+body.specialist-unlocked .nav-item.active { color: var(--accent-orange); }
+body.specialist-unlocked .nav-item.active .nav-icon { filter: drop-shadow(0 0 6px rgba(255,145,0,0.6)); }
+
+/* タブレット幅以上: 左サイドレール化 */
+@media (min-width: 768px) {
+    #appRoot { flex-direction: row; }
+    #pageHost { order: 2; }
+    #appNav {
+        position: static;
+        order: 1;
+        flex-direction: column;
+        width: 84px;
+        height: 100%;
+        border-top: none;
+        border-right: 1px solid rgba(255,255,255,0.08);
+        padding: 18px 0;
+        gap: 6px;
+    }
+    .nav-item { flex: 0 0 auto; padding: 12px 2px; font-size: 11px; }
+    .nav-item .nav-icon { font-size: 22px; }
+}
+
+/* =============================================================================
+   撮影ライブビュー中のナビゲーション（向き優先の出し分け）
+   -----------------------------------------------------------------------------
+   通常のナビ切替は「画面幅」基準（768px以上で左サイドレール化）だが、これは
+   撮影中に限っては都合が悪いケースがある。
+   ・タブレットを縦向きで構えた場合: 幅が768px以上あるため通常ルールでは
+     左サイドレールになるが、これが画角の横幅を圧迫してしまう。撮影中だけは
+     縦向き(portrait)であればスマホと同じ下部バーに戻す。
+   ・小型スマホを横向きで構えた場合: 端末幅が768px未満のままのことがあり、
+     通常ルールでは下部バーが残って縦方向を圧迫してしまう。撮影中だけは
+     横向き(landscape)であればタブレットと同じ左サイドレールに切り替える。
+   body.shoot-live-active は shootFlow.js の showLive()/showSetup() が
+   付け外しする（撮影ライブビュー表示中のみ有効）。
+   ========================================================================== */
+@media (min-width: 768px) and (orientation: portrait) {
+    body.shoot-live-active #appRoot { flex-direction: column; }
+    body.shoot-live-active #appNav {
+        position: fixed;
+        left: 0; right: 0; bottom: 0; top: auto;
+        height: var(--nav-size);
+        flex-direction: row;
+        width: auto;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        border-right: none;
+        padding: 0;
+        gap: 0;
+    }
+    body.shoot-live-active .nav-item { flex: 1; padding: 6px 2px; font-size: 10.5px; }
+    body.shoot-live-active .nav-item .nav-icon { font-size: 19px; }
+
+    /* ここではナビが(タブレット等でも)下部バーに戻るため、「モード選択に
+       戻る」ボタンと操作スタック(#uiFloatingLayer)は、通常の768px以上用の
+       サイドレール前提の余白(左寄せ)ではなく、下部バーの高さ分クリアランスを
+       取る側の配置に戻す必要がある。 */
+    body.shoot-live-active #shootBackToSetupBtn { left: 16px; bottom: calc(var(--nav-size) + 16px); }
+    body.shoot-live-active #uiFloatingLayer {
+        position: absolute; bottom: var(--nav-size); left: 0; right: 0; width: 100%; transform: none;
+    }
+}
+
+@media (max-width: 767px) and (orientation: landscape) {
+    body.shoot-live-active #appRoot { flex-direction: row; }
+    body.shoot-live-active #pageHost { order: 2; }
+    body.shoot-live-active #appNav {
+        position: static;
+        order: 1;
+        flex-direction: column;
+        width: 84px;
+        height: 100%;
+        border-top: none;
+        border-right: 1px solid rgba(255,255,255,0.08);
+        padding: 18px 0;
+        gap: 6px;
+    }
+    body.shoot-live-active .nav-item { flex: 0 0 auto; padding: 12px 2px; font-size: 11px; }
+    body.shoot-live-active .nav-item .nav-icon { font-size: 22px; }
+
+    /* .visual-area は @media(max-width:767px) 側で width:100vw が指定されて
+       いるが、これは「ナビはボトムバー(position:fixed)なので画面幅を圧迫
+       しない」という前提の値。この向き専用ブロックではナビをサイドレール化
+       (position:static, 84px)しているため、100vwのままだと右側が84px分
+       画面外にはみ出し、COPレーダー等が見切れてしまう。実際に使える幅
+       (=nav分を引いた幅)に合わせる。 */
+    body.shoot-live-active .visual-area,
+    body.shoot-live-active .view-port { width: calc(100vw - 84px); }
+
+    /* ここではナビがサイドレール化するため、下部バーの高さを見込んだ
+       クリアランス(通常の@media(max-width:767px)側の既定値)は不要になる。
+       「モード選択に戻る」・操作スタックともに、サイドレール分だけ左に
+       余白を取る配置に戻す。ただしこのブロックも767px以下のため、
+       #startBtn等は幅100%まで広がる(下方のモバイル用ルール参照)ので、
+       高さ方向のクリアランス(100px、下のbase定義と同じ考え方)は
+       引き続き必要。 */
+    body.shoot-live-active #shootBackToSetupBtn { left: calc(84px + 16px); bottom: 100px; }
+    body.shoot-live-active #uiFloatingLayer {
+        position: fixed; bottom: 20px; left: 50%; right: auto; transform: translateX(-50%);
+        width: 95%; max-width: 1200px;
+        background: none; padding: 0; z-index: var(--z-floating);
+    }
+}
+
+/* =============================================================================
+   ホーム画面
+   ========================================================================== */
+
+#page-home {
+    overflow-y: auto;
+    background: radial-gradient(circle at top, #0f1c3f 0%, var(--bg-primary) 60%);
+    padding: 28px 20px calc(var(--nav-size) + 28px);
+}
+/* ログイン/ゲスト画面と統一感を出すため、タブレット幅など横に余白がある
+   画面では左寄りにならず、コンテンツ全体を中央寄せにする。
+   表示切替は基本の .app-page/.app-page.active に従わせる必要があるため、
+   display は #page-home 単体ではなく #page-home.active にだけ指定する
+   （そうしないと非アクティブ時も display:none が上書きされ、他ページの
+   下に常時表示され続けてしまう） */
+#page-home.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.home-greeting, .home-sub, .home-cards { width: 100%; max-width: 560px; }
+.home-greeting { font-size: 20px; font-weight: 700; margin: 6px 0 4px; }
+.home-sub { color: var(--text-secondary); font-size: 13px; margin: 0 0 24px; }
+.home-cards { display: flex; flex-direction: column; gap: 14px; }
+.home-card {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: linear-gradient(135deg, rgba(100,255,218,0.12) 0%, rgba(0,191,255,0.08) 100%);
+    backdrop-filter: blur(15px);
+    border: 1.5px solid var(--accent-teal);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.45);
+}
+.home-card-title { font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.home-card-sub { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+.home-card-meta { font-size: 11.5px; color: var(--accent-teal); margin-top: 10px; font-weight: 600; }
+
+/* =============================================================================
+   設定画面
+   ========================================================================== */
+
+#page-settings {
+    overflow-y: auto;
+    padding: 28px 20px calc(var(--nav-size) + 28px);
+}
+/* ホーム画面/撮影設定画面と同じ考え方で中央寄せにする。displayの指定は
+   必ず.activeにだけ付ける（#page-settings単体に付けると、非アクティブ時の
+   .app-page{display:none}をID優先度で上書きしてしまい、他ページの裏に
+   ずっと表示され続けるバグになるため要注意）。 */
+#page-settings.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.settings-title, .settings-list, .settings-section-label { width: 100%; max-width: 560px; }
+.settings-list { display: flex; flex-direction: column; gap: 10px; }
+.settings-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    color: var(--text-primary);
+    font-size: 13.5px;
+    font-weight: 600;
+    text-align: left;
+}
+.settings-item .settings-item-arrow { color: var(--text-secondary); font-size: 13px; }
+.settings-item.specialist-link { border-color: var(--accent-orange); color: var(--accent-orange); }
+.settings-item.danger { border-color: var(--accent-red); color: var(--accent-red); }
+.settings-section-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; margin: 22px 0 10px; }
+.settings-section-label:first-child { margin-top: 0; }
+
+/* =============================================================================
+   撮影ステップインジケーター
+   ========================================================================== */
+
+/* #page-shoot は「ステップインジケーター(.shoot-steps) + 設定/ライブビュー」
+   という縦積み構成。以前は#shootSetupView/#shootLiveViewそれぞれに
+   height:100%を指定していたが、これは兄弟要素である.shoot-steps自体の
+   高さ(実測約37px)を考慮していなかったため、「ステップ表示の高さ＋
+   height:100%」の合計が#page-shoot自体の高さを超えてしまい、結果として
+   ライブビュー内でposition:absolute配置されている#uiFloatingLayer等が
+   想定より下にずれ、ナビゲーションバーと重なってしまう不具合を起こして
+   いた。height:100%という固定計算ではなく、flexboxで「ステップ表示は
+   その分だけ、残りは設定/ライブビューへ」と自動的に配分させることで
+   マジックナンバー無しに解消する。 */
+#page-shoot.active { display: flex; flex-direction: column; }
+.shoot-steps {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+    gap: 6px;
+    /* #shootSetupView/.setup-cardと同じ左右余白(20px)に揃え、下の緑ラインが
+       カードとぴったり同じ幅になるようにする */
+    padding: 12px 20px 0;
+    position: relative;
+    z-index: 50;
+}
+/* 常に3項目（モード選択/撮影/結果）を並べて出すのではなく、今いるステップの
+   名前だけをシンプルに中央表示する（他の2つはdisplay:noneで隠す） */
+.shoot-step {
+    display: none;
+    width: 100%;
+    max-width: 460px;
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding-bottom: 8px;
+    border-bottom: 3px solid rgba(255,255,255,0.12);
+}
+.shoot-step.active { display: block; color: var(--accent-teal); border-bottom-color: var(--accent-teal); }
+.shoot-step.done { color: var(--accent-green); border-bottom-color: var(--accent-green); }
+
+#shootSetupView { display: none; overflow-y: auto; padding: 8px 20px calc(var(--nav-size) + 20px); }
+/* ログイン/ホーム画面と統一感を出すため、横幅に余裕がある画面ではカードと
+   進むボタンを中央寄せにする（スマホ幅では実質見た目に変化なし）。
+   flex:1; min-height:0; で#page-shoot(flex縦積み)内の残り高さぴったりに
+   収め、overflow-y:autoで自分自身の中でスクロールさせる。 */
+#shootSetupView.active { display: flex; flex-direction: column; align-items: center; flex: 1; min-height: 0; }
+
+/* #shootLiveView自体にはこれまで非表示時のdisplay:none指定が無く、常に
+   レイアウトに存在していた（内部の.view-portだけが.activeで出し分けられて
+   いた）。その結果、子要素の#uiFloatingLayer（position:fixed）が設定画面の
+   上に薄く重なって表示され、「進むボタンが滲む」「ボタンを押しても反応しない
+   ように見える」原因になっていた。#shootSetupViewと同じ基本パターンに揃える。 */
+/* height:100% がこれまで無かったため、中の.hud-main-container(height:100%)
+   が「親の高さが未確定」と判定されてautoに丸められ、さらにgridの行が
+   auto最小化される際に .visual-area 側は中身が全部position:absoluteで
+   実質0pxのところ、.analytics-area側の実コンテンツ高さだけでグリッド行の
+   高さが決まってしまっていた（=常設カラムだった頃はたまたま高さが出ていた
+   だけの、隠れた不具合）。パラメーターパネルを条件付き非表示にした際に
+   これが露呈し、パネルOFF時にライブビュー全体の高さが0になって何も
+   映らなくなる回帰を引き起こしたため、ここで明示的にheight:100%を持たせて
+   解消する（2026-07-22）。 */
+#shootLiveView { display: none; }
+/* flex:1; min-height:0; で#page-shoot(flex縦積み)内の残り高さぴったりに
+   収める（.shoot-stepsの実高さを差し引いた分。height:100%だとその分を
+   考慮できず、下にはみ出してナビと重なる不具合があったため）。 */
+#shootLiveView.active { display: block; flex: 1; min-height: 0; }
+
+/* 設定ステップ: 関連項目をカードでグルーピングし、設定ページと同じ
+   視覚言語（bg-card + border-color、ラベルはsettings-section-label）に揃える */
+.setup-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: var(--bg-card);
+    backdrop-filter: blur(15px);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 18px 20px 4px;
+    margin-bottom: 16px;
+    max-width: 460px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+}
+.setup-card .settings-section-label { margin: 0 0 14px; }
+
+.setup-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; max-width: 420px; }
+.setup-field label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.setup-field input[type="text"], .setup-field input[type="number"], .setup-field select {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg-input);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 14px;
+    height: 46px;
+}
+.setup-field input[type="text"]:focus, .setup-field input[type="number"]:focus, .setup-field select:focus { border-color: var(--accent-blue); outline: none; }
+.setup-row { display: flex; gap: 12px; max-width: 420px; }
+.setup-row .setup-field { flex: 1; min-width: 0; }
+.setup-orientation-hint { font-size: 11px; color: var(--accent-orange); margin-top: 6px; }
+#shootStartBtn { width: 100%; max-width: 460px; margin-top: 10px; }
+#shootStartBtn:disabled { background: #2a364f; color: var(--text-secondary); box-shadow: none; cursor: not-allowed; opacity: 0.85; }
+
+.view-port { display: none; }
+#shootLiveView.active .view-port { display: flex; }
+
+/* =============================================================================
+   撮影結果ミニサマリー（STEP4 結果プレビュー）
+   ========================================================================== */
+
+#shootResultBanner {
+    display: none;
+    position: absolute;
+    left: 50%; bottom: calc(var(--nav-size) + 100px);
+    transform: translateX(-50%);
+    width: 92%; max-width: 480px;
+    background: rgba(10, 17, 40, 0.96);
+    backdrop-filter: blur(15px);
+    border: 1.5px solid var(--accent-green);
+    border-radius: var(--radius-lg);
+    padding: 16px 18px;
+    z-index: 160;
+    box-shadow: 0 15px 40px rgba(0,230,118,0.2);
+}
+#shootResultBanner.active { display: block; }
+.result-banner-title { color: var(--accent-green); font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.result-banner-actions { display: flex; gap: 10px; margin-top: 12px; }
+.result-banner-actions button { flex: 1; font-size: 12.5px; padding: 10px; }
+
+@media (min-width: 768px) {
+    #shootResultBanner { left: auto; right: 24px; bottom: 24px; transform: none; }
+}
+
+/* -----------------------------------------------------------------------
+   動作解析（動的種目）の「撮影確認」画面 (#dynConfirmOverlay)
+   -----------------------------------------------------------------------
+   v4.6.22ではCSSでの見た目変更（body.dyn-result-active）のみで「確認画面
+   らしさ」を表現していたが、静止4方向の4面確認・修正画面(#batchReview
+   Overlay)と全く同じ、独立した専用オーバーレイ画面にしてほしいという
+   ご要望（2026-07-29）を受け、v4.6.23でCSS切り替え方式は廃止し、
+   #dynConfirmOverlayという別要素に置き換えた。スタイル定義は下の
+   #batchReviewOverlayのすぐ近くにある。
+   ----------------------------------------------------------------------- */
+
+.hud-main-container {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-primary);
+    overflow: hidden;
+}
+
+.visual-area {
+    position: relative;
+    height: 100%;
+    background: radial-gradient(circle at center, #0f1c3f 0%, var(--bg-primary) 100%);
+    overflow: hidden;
+}
+
+.view-port {
+    position: absolute;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+/* キャリブレーション用の目安線（2026-08-07追加、2026-08-07に横線位置を1/8→1/6へ
+   再調整）。カメラのライブプレビュー全体(.view-portの実寸)に対して、縦線=左右
+   中央(50%)、横線=画面下から1/6の高さの位置に固定表示する。タップ校正の
+   「マット端をタップ」操作を邪魔しないよう、コンテナ・線とも
+   pointer-events:none にしている。 */
+.calib-guide-lines {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+}
+.calib-guide-line {
+    position: absolute;
+    background: rgba(100, 255, 218, 0.55); /* var(--accent-teal)相当。赤である必要はないため、
+                                                既存の水準器等と同系統のティール系を採用 */
+    box-shadow: 0 0 4px rgba(100, 255, 218, 0.4);
+}
+.calib-guide-vertical {
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-1px);
+}
+.calib-guide-horizontal {
+    left: 0;
+    right: 0;
+    bottom: 16.6667%; /* 画面下から1/6 */
+    height: 2px;
+}
+
+video { display: none; }
+
+#canvasMP, #webgl-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+#webgl-canvas { pointer-events: none; object-fit: cover; }
+
+/* 2026-08-03: 履歴/撮影確認画面からの再生・微調整（body.review-playback-
+   active、controls.jsのupdateReviewLayoutMode参照）中だけ、棒人間の描画
+   領域(#canvasMP)を下部の操作パネル(#uiFloatingLayer)の実測高さぶん
+   上に詰め、画像の上に操作パネルを浮かせて重ねるのではなく専用スペースを
+   確保する（「操作パネルの下に棒人間が隠れている」というご指摘への対応）。
+   object-fit:containのため、詰めた分は表示が縮小されるかたちになる。
+   ライブ撮影中の画面（従来通り操作パネルを画角に浮かせる作り）は
+   このクラスが付かないため影響を受けない。
+   #canvasMP側だけでなく#webgl-canvasも同時に詰めないと、両者の表示範囲が
+   ズレて見た目が破綻するため、必ずセットで指定する。 */
+body.review-playback-active #canvasMP,
+body.review-playback-active #webgl-canvas {
+    height: calc(100% - var(--review-controls-height, 0px));
+    transition: height 0.15s ease;
+}
+
+/* 2026-08-03の追加対応: 上記で#canvasMPを縮めると、撮影時の画角の縦横比と
+   縮めた枠の縦横比が一致しない場合、object-fit:containによる余白（レター
+   ボックス）や、#canvasMPの表示枠そのものが縮んで空いた下側の隙間に、
+   .visual-areaの背景（明るめの紺色 #0f1c3f を中心に持つ放射状グラデー
+   ション）が透けて見えてしまっていた。再生中の#canvasMP自体は
+   controls.jsのrenderPlaybackFrame()が背景色var(--bg-primary)
+   (#050811、ほぼ黒)で毎フレーム塗り潰しているため、透けて見える
+   .visual-areaの背景色（#0f1c3fの方が明るい）とだけ明確な色差ができて
+   しまい、「棒人間の下に黒い帯のようなものが乗っていて隠れている」ように
+   見える不具合になっていた（実機のスクリーンショットで確認・特定、
+   2026-08-03）。再生・微調整中だけ.visual-areaの背景を#canvasMPの塗り
+   潰し色と揃えることで、隙間・レターボックス部分が目立たなくなり、
+   単に画角が想定より小さく表示されているだけの見た目になる。 */
+body.review-playback-active .visual-area {
+    background: var(--bg-primary);
+}
+
+/* =============================================================================
+   HUD オーバーレイ（ラベル・情報パネル・タイマー・COPレーダー・水準器）
+   ========================================================================== */
+
+.hud-label {
+    position: absolute;
+    top: 20px; left: 20px;
+    background: rgba(10, 17, 40, 0.85);
+    padding: 8px 18px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-teal);
+    border: 1px solid var(--accent-teal);
+    box-shadow: 0 0 15px rgba(100, 255, 218, 0.25);
+    z-index: var(--z-hud);
+    letter-spacing: 1px;
+    pointer-events: none;
+    max-width: 80%;
+}
+.hud-label .badge {
+    background: var(--accent-blue);
+    color: #050811;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    margin-left: 6px;
+}
+
+.camera-mode-badge {
+    /* 撮影中の画面をシンプルにするため常時非表示にする。モード名は
+       撮影設定画面（タブ選択）で既に確認できているため、ライブビュー中に
+       重ねて表示する必要はない、という判断（2026-07-22）。 */
+    display: none;
+    position: absolute;
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 30px;
+    backdrop-filter: blur(8px);
+    z-index: var(--z-floating);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    pointer-events: none;
+    background: rgba(0, 230, 118, 0.15);
+    color: #00e676;
+    border: 1px solid rgba(0, 230, 118, 0.3);
+    white-space: nowrap;
+}
+.camera-mode-badge.selfie-active {
+    background: rgba(0, 191, 255, 0.15);
+    color: #00bfff;
+    border-color: rgba(0, 191, 255, 0.3);
+}
+
+.timer-display {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: linear-gradient(135deg, var(--accent-red) 0%, #b30000 100%);
+    color: white;
+    padding: 10px 20px;
+    font-size: 22px;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    display: none;
+    z-index: var(--z-floating);
+    pointer-events: none;
+    animation: flash 1s infinite alternate;
+}
+@keyframes flash { from { opacity: 1; } to { opacity: 0.75; } }
+
+.radar-wrapper {
+    position: absolute;
+    top: auto; bottom: calc(var(--nav-size) + 10px); right: 20px;
+    width: 110px; height: 110px;
+    z-index: 200;
+    touch-action: none;
+    cursor: grab;
+    transition: transform 0.2s, opacity 0.2s;
+}
+.radar-wrapper.dragging { cursor: grabbing; transform: scale(1.08); opacity: 0.85; z-index: 9999; }
+.radar-box {
+    width: 110px; height: 110px;
+    background: rgba(5, 8, 17, 0.85);
+    backdrop-filter: blur(8px);
+    border-radius: 50%;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+    border: 2px solid var(--accent-red);
+    pointer-events: none;
+}
+.radar-title {
+    position: absolute;
+    top: -22px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px; font-weight: 700;
+    background: var(--bg-primary);
+    padding: 3px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+    color: var(--accent-red);
+    border: 1px solid var(--accent-red);
+}
+
+.gyro-level-container {
+    position: absolute;
+    top: 35%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 140px; height: 140px;
+    z-index: 800;
+    pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.level-circle {
+    width: 80px; height: 80px;
+    border: 2px dashed rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    transition: border-color 0.3s ease;
+}
+.level-dot {
+    width: 14px; height: 14px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+.gyro-level-container.aligned .level-circle { border: 3px solid var(--accent-green); animation: pulse-green 1s infinite alternate; }
+.gyro-level-container.aligned .level-dot { background: var(--accent-green); }
+.level-status { margin-top: 12px; font-size: 11px; color: rgba(255,255,255,0.7); text-shadow: 0 2px 4px rgba(0,0,0,0.8); text-align: center; white-space: nowrap; }
+
+.auto-rec-countdown {
+    position: absolute; top: 45%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 80px; font-weight: 900;
+    color: var(--accent-red);
+    text-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    z-index: 900; pointer-events: none;
+    animation: countdown-zoom 1s infinite;
+}
+@keyframes countdown-zoom {
+    0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+    30% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+}
+@keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.4); } 100% { box-shadow: 0 0 0 10px rgba(0, 230, 118, 0); } }
+
+.auto-rec-ready-message {
+    position: absolute; top: 45%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px; font-weight: 800;
+    color: #ffeb3b;
+    text-shadow: 0 4px 15px rgba(0,0,0,0.9), 0 0 10px rgba(255, 235, 59, 0.5);
+    z-index: 900; pointer-events: none;
+    background: rgba(5, 8, 17, 0.8);
+    backdrop-filter: blur(8px);
+    padding: 14px 28px;
+    border-radius: 12px;
+    border: 1.5px solid rgba(255, 235, 59, 0.4);
+    animation: ready-pulse 0.8s infinite alternate;
+    text-align: center; white-space: nowrap;
+}
+@keyframes ready-pulse { 0% { opacity: 0.75; transform: translate(-50%, -50%) scale(0.96); } 100% { opacity: 1; transform: translate(-50%, -50%) scale(1.02); } }
+
+.recording-active #uiFloatingLayer,
+.recording-active #radarWrapperMP,
+.recording-active .hud-label,
+.recording-active .camera-mode-badge,
+.recording-active #autoRecReadyMessage,
+.recording-active #gyroLevelContainer {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
+
+/* =============================================================================
+   D-pad
+   ========================================================================== */
+
+.panel-header { color: var(--accent-orange); font-size: 13px; font-weight: 600; margin-bottom: 12px; text-align: center; }
+
+#dpadPanel {
+    position: absolute;
+    top: 30px; right: 30px;
+    background: rgba(10, 17, 40, 0.95);
+    border: 2px solid var(--accent-blue);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    z-index: 1000;
+    display: none;
+    flex-direction: column; align-items: center;
+    box-shadow: 0 15px 40px rgba(0, 191, 255, 0.25);
+}
+.dpad-header { color: var(--accent-blue); font-size: 13px; font-weight: 700; margin-bottom: 15px; display: flex; justify-content: space-between; width: 100%; align-items: center; }
+.dpad-close { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-red); color: white; font-size: 11px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.dpad-row { display: flex; justify-content: center; gap: 10px; margin: 5px 0; }
+.dpad-btn { width: 52px; height: 52px; border-radius: var(--radius-md); background: #112240; color: white; font-size: 20px; border: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+.dpad-btn:active { background: var(--accent-blue); color: black; transform: scale(0.95); }
+.dpad-btn.dpad-step-btn { font-size: 12px; background: var(--accent-purple); font-weight: 700; color: white; }
+
+/* =============================================================================
+   4隅ArUco床面キャリブレーションパネル（2026-08-03追加）
+   #dpadPanelと同じ「ライブ映像に重ねる浮動パネル」の位置づけ。中身が
+   #dpadPanelより多いため、左右中央寄せ・やや広めの固定幅にする。
+   js/ui/shootFlow.js・js/core/arucoCalibration.js参照。
+   ========================================================================== */
+#arucoCalibPanel {
+    display: none;
+    position: absolute;
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 17, 40, 0.94);
+    backdrop-filter: blur(12px);
+    border: 1.5px solid var(--accent-purple);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    z-index: var(--z-dpad);
+    box-shadow: 0 10px 30px rgba(155, 89, 255, 0.25);
+    width: 280px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+#arucoCalibPanel .panel-header { color: var(--accent-purple); }
+#arucoCalibBoardInputs { display: flex; flex-direction: column; gap: 8px; }
+#arucoCalibBoardInputs label { color: var(--text-secondary); font-size: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#arucoCalibBoardInputs input[type="number"] { width: 90px; background: #0a1428; border: 1px solid rgba(255,255,255,0.15); border-radius: 6px; color: #fff; padding: 6px 8px; font-size: 13px; }
+#arucoCalibBoardInputs button { margin-top: 4px; width: 100%; }
+#arucoCalibDetectStatus { margin-top: 12px; font-size: 12px; color: var(--text-secondary); text-align: center; line-height: 1.6; }
+#arucoCalibResult { margin-top: 10px; font-size: 12px; color: var(--text-primary); line-height: 1.7; background: rgba(255,255,255,0.04); border-radius: 6px; padding: 8px 10px; }
+#arucoCalibResult .warn { color: #ffb74d; }
+#arucoCalibResult .ok { color: var(--accent-teal); }
+#arucoCalibActions { display: flex; gap: 8px; margin-top: 10px; }
+#arucoCalibActions button { flex: 1; }
+#arucoCalibCancelBtn { width: 100%; }
+
+/* =============================================================================
+   フローティングコントロール（下部の操作パネル一式）
+   ========================================================================== */
+
+#uiFloatingLayer {
+    position: fixed;
+    bottom: 20px; left: 50%;
+    transform: translateX(-50%);
+    width: 95%; max-width: 1200px;
+    z-index: var(--z-floating);
+    display: flex; flex-direction: column; align-items: center;
+    transition: all 0.3s ease;
+}
+/* 撮影ボタン(#actionDock)を撮影画面の一番下まで下げるため、DOM順とは逆に
+   見た目上はactionDockを最下段にする（#controlsScrollAreaは通常時ほぼ
+   空になり(モード選択に戻るは独立配置済み、mainControlsも空)、再生モード時
+   だけ実際のコントロール群が入���が、その場合も主操作ボタンを一番下に
+   揃えたほうが分かりやすいため統一する）。 */
+#actionDock { order: 2; }
+#controlsScrollArea { order: 1; }
+
+/* 「モード選択に戻る」: 画角を最��限広く使えるよう、下部中央の操作スタック
+   から独立させ、左下に固定表示する。ナビゲーションが下部バーの時は
+   バーの高さ分、サイドレールの時はレール幅分だけ、それぞれ重ならない位置に
+   ずらす（#appNavの出し分けと同じ考え方。style.css内のナビ関連コメント参照）。
+   さらに767px以下では#startBtn等が幅100%まで広がる仕様(下方のモバイル用
+   ルール参照)のため、同じ高さに置くと主操作ボタンと重なってしまう。
+   768px以上ではstartBtnが220px固定幅で中央寄せのため左側に余白があり
+   重ならないが、767px以下だけは主操作ボタンの上に来る高さまで上げる。 */
+#shootBackToSetupBtn {
+    position: fixed;
+    left: 16px;
+    bottom: calc(var(--nav-size) + 100px);
+    /* #uiFloatingLayer(z-index:var(--z-floating)=100、モバイルでは背景
+       グラデーション付き)がDOM順で後にあるため、同じz-indexだと
+       このボタンの上に重なって見えなくなり、クリックも奪われて
+       しまっていた。#uiFloatingLayerより明確に高いz-indexにして
+       常に手前に出るようにする。 */
+    z-index: 300;
+}
+@media (min-width: 768px) {
+    #shootBackToSetupBtn { left: calc(84px + 16px); bottom: 16px; }
+}
+
+.ui-top-buttons { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.ui-top-btn {
+    background: rgba(0, 191, 255, 0.1);
+    color: var(--accent-blue);
+    border: 1.5px solid var(--accent-blue);
+    border-radius: 30px;
+    padding: 8px 20px;
+    font-weight: 600;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    font-size: 13px;
+}
+.ui-top-btn:hover { background: rgba(0, 191, 255, 0.22); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 191, 255, 0.35); }
+.dash-top-btn { background: rgba(255, 145, 0, 0.1); color: var(--accent-orange); border-color: var(--accent-orange); }
+.dash-top-btn:hover { background: rgba(255, 145, 0, 0.22); box-shadow: 0 6px 20px rgba(255, 145, 0, 0.35); }
+
+/* 「アカウント」表示は.settings-itemクラスを併用し、「アプリ設定」等の
+   項目と同じカード見た目（背景・枠線・角丸・余白）に揃えている。
+   ここでは中の要素（名前/ログアウトボタン）の見た目だけを定義する。 */
+.account-badge .account-name { color: var(--text-primary); font-weight: 600; white-space: nowrap; }
+.account-badge .account-signout {
+    background: rgba(255, 82, 82, 0.15);
+    color: var(--accent-red);
+    border: none;
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 11px;
+    line-height: 1.2;
+}
+
+#controlsScrollArea {
+    width: 100%;
+    max-height: 65vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.15) transparent;
+    padding-bottom: 5px;
+    display: flex; flex-direction: column; align-items: center;
+}
+#controlsScrollArea::-webkit-scrollbar { width: 6px; }
+#controlsScrollArea::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.15); border-radius: 3px; }
+
+#controlsBox { width: 100%; }
+.controls {
+    background: var(--bg-card);
+    backdrop-filter: blur(15px);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px;
+    width: 100%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+}
+
+/* 前面/左側面/後面の確認画面では、再生・微調整・書き出し系をまとめて隠す
+   ラッパー。display:contentsで子要素を.controlsの直接の子であるかのように
+   flexレイアウトさせ、通常時は見た目に影響を与えない。非表示時のみ
+   controls.jsからdisplay:noneに切り替える。 */
+.review-extra-tools { display: contents; }
+.review-extra-tools.tools-hidden { display: none; }
+
+select { background: var(--bg-input); color: #fff; border: 1px solid rgba(255,255,255,0.1); }
+select:hover { border-color: var(--accent-blue); }
+.mode-dropdown { background: #112240; color: var(--accent-teal); border: 1px solid var(--border-color); font-weight: 700; }
+.mode-dropdown optgroup { background: var(--bg-primary); color: var(--text-secondary); }
+.playback-speed-select { width: auto; min-width: 76px; padding: 8px 10px; border-radius: var(--radius-sm); font-size: 13px; }
+
+/* 2026-08-04: 以前はここに背景グラデーション(下方向にかけて黒っぽく
+   暗くなるband)を敷いていたが、#actionDockは.view-port(カメラ映像)の上に
+   固定表示される作りのため、この帯そのものがカメラ画角の下部に常時
+   かぶって映ってしまう不具合があった（縦置き撮影で画角が.visual-area
+   の高さいっぱいまで映るようになったことで特に目立つとのご指摘、
+   2026-08-04）。startBtn/recBtn/nextMeasureBtn自体はそれぞれ独自の
+   背景色・box-shadowを持ち視認性は確保されているため、この帯を
+   背景ごと廃止して透過にし、映像への映り込みを無くす。 */
+#actionDock {
+    width: 100%; min-height: 80px;
+    display: flex; align-items: center; justify-content: center; gap: 15px;
+    margin-top: 10px;
+    background: transparent;
+    border-radius: var(--radius-lg);
+    padding: 10px 15px;
+    z-index: 101;
+}
+#startBtn, #recBtn, #nextMeasureBtn { position: relative; margin: 0; box-sizing: border-box; outline: none; }
+
+#startBtn {
+    display: flex; width: 220px; height: 52px; border-radius: 26px;
+    background: linear-gradient(135deg, var(--accent-blue) 0%, #007acc 100%);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 8px 25px rgba(0, 191, 255, 0.4), inset 0 0 5px rgba(0,0,0,0.3);
+    color: white; font-size: 15px; font-weight: bold;
+    align-items: center; justify-content: center;
+}
+#startBtn:hover:not(:disabled) { transform: scale(1.04); box-shadow: 0 10px 30px rgba(0, 191, 255, 0.6); }
+#startBtn:disabled { background: #2a364f; border-color: rgba(255,255,255,0.3); color: var(--text-secondary); box-shadow: none; cursor: not-allowed; }
+
+#recBtn {
+    display: none; width: 82px; height: 82px; border-radius: 50%;
+    background: radial-gradient(circle, #ff3c00 0%, #b30000 100%);
+    border: 4px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 8px 25px rgba(255, 60, 0, 0.5), inset 0 0 8px rgba(0,0,0,0.4);
+    color: white; font-size: 14px; font-weight: bold;
+    align-items: center; justify-content: center;
+    transition: all 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+#recBtn:hover:not(:disabled) { transform: scale(1.08); box-shadow: 0 10px 30px rgba(255, 60, 0, 0.7); }
+#recBtn:disabled { background: #2a364f; border-color: rgba(255,255,255,0.3); color: var(--text-secondary); box-shadow: none; cursor: not-allowed; }
+
+#nextMeasureBtn {
+    display: none; width: 240px; height: 52px; border-radius: 26px;
+    align-items: center; justify-content: center; font-size: 15px; font-weight: bold;
+}
+#nextMeasureBtn { background: linear-gradient(135deg, #00e676 0%, #00a152 100%); border: 2px solid rgba(255, 255, 255, 0.8); color: white; box-shadow: 0 8px 25px rgba(0, 230, 118, 0.45); }
+#nextMeasureBtn:hover:not(:disabled) { transform: scale(1.04); }
+
+.gray-btn { background: #334466; color: white; }
+.gray-btn:hover { background: #445577; }
+.blue-btn { background: var(--accent-blue); color: #000; }
+.blue-btn:hover { filter: brightness(1.1); }
+.green-btn { background: var(--accent-green); color: #000; }
+.green-btn:hover { filter: brightness(1.1); }
+.orange-btn { background: var(--accent-orange); color: #000; }
+.orange-btn:hover { filter: brightness(1.1); }
+.purple-btn { background: var(--accent-purple); color: white; }
+.purple-btn:hover { filter: brightness(1.1); }
+
+.input-group { display: flex; align-items: center; background: var(--bg-input); padding: 2px 10px; border-radius: var(--radius-sm); border: 1px solid rgba(255,255,255,0.1); }
+.input-group .prefix { color: var(--text-secondary); font-size: 12px; margin-right: 5px; white-space: nowrap; }
+.input-group .suffix { color: var(--text-secondary); font-size: 12px; margin-left: 5px; }
+.input-group input[type="number"], .input-group input[type="text"] { width: 60px; background: transparent; text-align: right; border: none; font-weight: 700; font-size: 15px; padding: 6px 0; }
+
+.toggle-label { color: var(--accent-blue); font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.3); padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid rgba(0, 191, 255, 0.2); }
+
+#timelineSlider { flex: 1; max-width: 450px; accent-color: var(--accent-blue); height: 6px; border-radius: 3px; }
+#frameCounter { color: var(--accent-blue); font-weight: 700; font-size: 14px; min-width: 60px; text-align: center; }
+
+.analysis-tabs { display: flex; background: rgba(10, 17, 40, 0.6); border: 1px solid rgba(100, 255, 218, 0.15); border-radius: 30px; padding: 2px; gap: 2px; }
+.analysis-tab { background: transparent; border: none; color: var(--text-secondary); padding: 6px 16px; font-size: 13px; font-weight: 600; border-radius: 30px; font-family: inherit; }
+/* 撮影設定カード内のタブ（撮影スタイル/測定カテゴリ）は、2択を均等に
+   左右半分ずつのボタンとして見せる */
+.setup-card .analysis-tab { flex: 1; text-align: center; }
+.analysis-tab:hover { color: var(--text-primary); }
+.analysis-tab.active { background: linear-gradient(135deg, rgba(0, 191, 255, 0.25) 0%, rgba(100, 255, 218, 0.25) 100%); color: var(--accent-teal); border: 1px solid rgba(100, 255, 218, 0.3); box-shadow: 0 0 10px rgba(100, 255, 218, 0.2); }
+
+.active-pulse { animation: active-green-pulse 1.2s infinite alternate; }
+@keyframes active-green-pulse {
+    0% { box-shadow: 0 0 8px rgba(57, 255, 20, 0.25); border-color: rgba(57, 255, 20, 0.5); }
+    100% { box-shadow: 0 0 18px rgba(57, 255, 20, 0.6); border-color: rgba(57, 255, 20, 0.9); }
+}
+
+/* =============================================================================
+   モーダル（共通基盤: .modal-panel）
+   すべてのダイアログ（API設定・専門家ログイン・会員登録・メンター予約・
+   ジャイロ許可）はこの基盤クラスを土台にする
+   ========================================================================== */
+
+.modal-panel {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(10, 17, 40, 0.98);
+    backdrop-filter: blur(15px);
+    border: 2px solid var(--accent-teal);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    z-index: var(--z-modal);
+    box-shadow: 0 20px 50px rgba(100, 255, 218, 0.25);
+    width: 90%;
+    max-width: 450px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+#specialistLoginModal { border-color: var(--accent-orange); box-shadow: 0 20px 50px rgba(255, 145, 0, 0.25); }
+#mentorBookingModal { max-width: 500px; } /* ホーム画面と同じテイスト(ティール)にするため、.modal-panelの既定色をそのまま使う */
+.auth-modal { border-color: var(--accent-blue); box-shadow: 0 20px 50px rgba(0, 191, 255, 0.25); }
+
+.modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid rgba(255, 255, 255, 0.1); padding-bottom: 12px; margin-bottom: 20px; }
+.modal-header h3 { margin: 0; color: var(--text-primary); font-size: 18px; font-weight: 700; }
+#specialistLoginModal .modal-header h3 { color: var(--accent-orange); }
+.auth-modal .modal-header h3 { color: var(--accent-blue); }
+.auth-modal .modal-header { flex-direction: column; gap: 10px; justify-content: center; text-align: center; }
+/* ライブビューから撤去したロゴ（撮影中は画面を圧迫するため）の
+   移設先。会員登録/ログイン導線の一番上に据えることで、ブランド表示
+   自体は引き続き最初の画面で確認できるようにする（2026-07-22）。 */
+.auth-modal-logo {
+    align-self: center;
+    background: rgba(10, 17, 40, 0.85);
+    padding: 8px 18px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent-teal);
+    border: 1px solid var(--accent-teal);
+    box-shadow: 0 0 15px rgba(100, 255, 218, 0.25);
+    letter-spacing: 1px;
+}
+.auth-modal-logo .badge {
+    display: inline-block;
+    white-space: nowrap;
+    background: var(--accent-blue);
+    color: #050811;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    margin-left: 6px;
+}
+
+.close-btn { background: transparent; color: var(--text-secondary); font-size: 18px; border: none; padding: 0; }
+.close-btn:hover { color: #fff; }
+
+.modal-body { line-height: 1.6; }
+.modal-body p { font-size: 13px; color: var(--text-secondary); margin-top: 0; }
+
+.input-field { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; min-width: 0; }
+.input-field label { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+#specialistLoginModal .input-field label { color: var(--accent-orange); }
+.auth-modal .input-field label { color: var(--accent-blue); }
+.input-field input, .input-field select, .input-field textarea { width: 100%; min-width: 0; background: var(--bg-input); color: white; border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-sm); padding: 12px; font-size: 14px; }
+.input-field input:focus, .input-field select:focus { border-color: var(--accent-blue); }
+
+/* パスワード表示/非表示トグル */
+.password-field { position: relative; }
+.password-field input { padding-right: 56px; }
+.password-toggle-btn { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); background: transparent; border: none; padding: 6px 8px; font-size: 11px; font-weight: 700; line-height: 1; color: var(--text-secondary); opacity: 0.8; cursor: pointer; white-space: nowrap; }
+.password-toggle-btn:hover { opacity: 1; color: var(--text-primary); }
+.password-toggle-btn.is-visible { opacity: 1; color: var(--accent-teal); }
+
+.help-text { font-size: 10px; color: #566285; margin: 10px 0 0 0; }
+.modal-footer { display: flex; justify-content: flex-end; margin-top: 20px; }
+
+.primary-btn { background: linear-gradient(135deg, var(--accent-teal) 0%, #00bfa5 100%); color: #050811; border-radius: var(--radius-sm); padding: 10px 24px; font-weight: 700; box-shadow: 0 4px 15px rgba(100, 255, 218, 0.25); }
+.primary-btn:hover { box-shadow: 0 6px 20px rgba(100, 255, 218, 0.4); }
+#specialistLoginModal .primary-btn { background: linear-gradient(135deg, var(--accent-orange) 0%, #e65100 100%); color: white; box-shadow: 0 4px 15px rgba(255, 145, 0, 0.25); }
+.auth-modal .primary-btn { background: linear-gradient(135deg, var(--accent-blue) 0%, #007acc 100%); color: white; box-shadow: 0 4px 15px rgba(0, 191, 255, 0.25); }
+
+/* 会員登録モーダル固有 */
+.auth-tabs { display: flex; gap: 6px; margin-bottom: 18px; background: rgba(255,255,255,0.04); border-radius: 30px; padding: 3px; }
+.auth-tabs .analysis-tab { flex: 1; min-width: 0; text-align: center; padding: 6px 4px; font-size: 12px; white-space: nowrap; }
+
+/* 会員登録の確認画面 */
+.confirm-list { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); padding: 4px 14px; }
+.confirm-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 0; }
+.confirm-row + .confirm-row { border-top: 1px solid rgba(255,255,255,0.06); }
+.confirm-label { font-size: 12px; color: var(--text-secondary); }
+.confirm-value { font-size: 14px; font-weight: 700; color: var(--text-primary); text-align: right; overflow-wrap: anywhere; }
+
+/* =============================================================================
+   履歴パネル
+   ========================================================================== */
+
+#historyPanel {
+    position: absolute;
+    inset: 0;
+    background: var(--bg-primary);
+    padding: 24px 20px calc(var(--nav-size) + 20px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    width: 100%;
+}
+.history-header { color: var(--accent-blue); font-size: 18px; font-weight: 700; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.history-header button { background: transparent; color: var(--text-secondary); border: none; font-size: 18px; display: none; }
+.history-header button:hover { color: white; }
+.history-list { display: flex; flex-direction: column; gap: 12px; overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+.history-item { background: #112240; border-left: 4px solid var(--accent-blue); padding: 12px 14px; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.history-item:hover { background: #172a45; transform: translateX(3px); }
+.history-info { display: flex; flex-direction: column; gap: 4px; cursor: pointer; flex: 1; }
+.history-mode { color: #fff; font-size: 14px; font-weight: 700; }
+.history-date { color: var(--text-secondary); font-size: 11px; }
+.history-actions { display: flex; gap: 6px; margin-left: 10px; }
+.history-action-btn { background: #233554; color: white; border-radius: 5px; padding: 5px 8px; font-size: 11px; font-weight: 600; }
+.history-action-btn:hover { filter: brightness(1.2); }
+.history-action-btn.del { background: var(--accent-red); color: white; }
+.history-action-btn.vid { background: var(--accent-blue); color: black; }
+.history-action-btn.finalize { background: var(--accent-green); color: black; }
+.history-draft-badge { display: inline-block; background: rgba(255, 145, 0, 0.15); color: var(--accent-orange); border: 1px solid rgba(255, 145, 0, 0.4); border-radius: 4px; padding: 1px 6px; font-size: 10px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+.history-item:has(.history-draft-badge) { border-left-color: var(--accent-orange); }
+
+/* =============================================================================
+   ダッシュボード / レポート
+   ========================================================================== */
+
+#dashboardOverlay {
+    position: fixed; inset: 0;
+    background: var(--bg-primary);
+    z-index: var(--z-dashboard);
+    display: none;
+    overflow-y: auto;
+    padding: 40px;
+}
+.dash-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--accent-blue); padding-bottom: 20px; margin-bottom: 30px; max-width: 1400px; margin-left: auto; margin-right: auto; }
+.dash-title { color: var(--accent-blue); font-size: 28px; font-weight: 700; margin: 0; }
+.dash-actions { display: flex; gap: 12px; }
+.dash-close, .dash-print { padding: 10px 20px; border-radius: var(--radius-sm); font-weight: 700; font-size: 14px; }
+.dash-close { background: #112240; color: white; border: 1px solid rgba(255,255,255,0.1); }
+.dash-close:hover { background: #172a45; }
+.dash-print { background: linear-gradient(135deg, var(--accent-orange) 0%, #e65100 100%); color: white; box-shadow: 0 4px 15px rgba(255, 145, 0, 0.3); }
+.dash-print:hover { box-shadow: 0 6px 20px rgba(255, 145, 0, 0.45); }
+
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 25px; max-width: 1400px; margin: 0 auto; }
+.dash-card { background: #0a192f; border: 1.5px solid rgba(255,255,255,0.05); border-radius: var(--radius-lg); padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-top: 1px solid rgba(100, 255, 218, 0.1); }
+.dash-card.expert-card { border-top-color: var(--accent-orange); }
+.dash-card h3 { color: var(--accent-teal); margin-top: 0; border-bottom: 1.5px solid rgba(255,255,255,0.05); padding-bottom: 12px; font-size: 17px; margin-bottom: 18px; font-weight: 600; }
+.dash-card.expert-card h3 { color: var(--accent-orange); }
+.dash-metric { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 14px; background: rgba(255,255,255,0.02); padding: 10px 14px; border-radius: var(--radius-sm); }
+.dash-metric span:first-child { color: var(--text-secondary); }
+.dash-metric .val { font-weight: 700; color: #fff; }
+.dash-metric .val.warn { color: var(--accent-red); }
+.dash-metric .val.good { color: var(--accent-green); }
+
+.ai-eval-card { grid-column: 1 / -1; }
+.ai-eval-box { background: rgba(138, 43, 226, 0.05); border-left: 4px solid var(--accent-purple); padding: 18px; border-radius: var(--radius-sm); line-height: 1.7; font-size: 14px; min-height: 100px; }
+.ai-eval-box h2 { color: var(--accent-teal); font-size: 16px; margin-top: 18px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; }
+.ai-eval-box h2:first-of-type { margin-top: 0; }
+.ai-eval-box ul { margin-top: 5px; padding-left: 20px; }
+.ai-eval-box li { margin-bottom: 5px; }
+.ai-eval-box p { margin: 5px 0 10px 0; }
+
+.report-image-section { margin: 25px 0; }
+.report-image-title { font-size: 16px; font-weight: 700; color: var(--accent-teal); border-bottom: 2px solid rgba(100, 255, 218, 0.2); padding-bottom: 8px; margin-bottom: 15px; letter-spacing: 0.5px; }
+.report-image-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+.report-image-card { background: rgba(10, 17, 40, 0.5); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: var(--radius-sm); padding: 10px; text-align: center; }
+.report-image-card img { width: 100%; height: auto; border-radius: 4px; border: 1px solid rgba(100, 255, 218, 0.15); background: #000; object-fit: contain; aspect-ratio: 4/3; }
+.report-image-label { font-size: 12px; font-weight: 700; margin-top: 8px; color: var(--text-primary); }
+.report-image-sub { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+/* =============================================================================
+   4面 確認・修正画面（撮影完了直後、確定するまでのレビュー）
+   ========================================================================== */
+
+#batchReviewOverlay {
+    position: fixed; inset: 0;
+    background: var(--bg-primary);
+    z-index: var(--z-dashboard);
+    display: none;
+    overflow-y: auto;
+    padding: 40px;
+}
+.batch-review-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; max-width: 1000px; margin: 0 auto; }
+.batch-review-card { background: #0a192f; border: 1.5px solid rgba(255,255,255,0.05); border-radius: var(--radius-lg); padding: 14px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border-top: 1px solid rgba(100, 255, 218, 0.1); }
+.batch-review-card img { width: 100%; height: auto; border-radius: 4px; border: 1px solid rgba(100, 255, 218, 0.15); background: #000; object-fit: contain; aspect-ratio: 4/3; }
+.batch-review-noimg { aspect-ratio: 4/3; background: #0f1c3f; border: 1px dashed rgba(255,255,255,0.2); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); font-size: 12px; }
+.batch-review-label { font-size: 14px; font-weight: 700; margin-top: 10px; color: var(--text-primary); }
+.batch-review-actions { display: flex; gap: 8px; margin-top: 12px; }
+.batch-review-actions button { flex: 1; font-size: 12px; padding: 9px 6px; }
+.batch-review-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* =============================================================================
+   動作解析 撮影確認画面（撮影完了直後、確定するまでのレビュー）
+   #batchReviewOverlay と全く同じ位置づけ・見た目にした、動作解析1件用の
+   専用オーバーレイ。v4.6.23で新規追加。中身の.batch-review-grid/
+   .batch-review-card等のクラスはそのまま再利用している。
+   ========================================================================== */
+
+#dynConfirmOverlay {
+    position: fixed; inset: 0;
+    background: var(--bg-primary);
+    z-index: var(--z-dashboard);
+    display: none;
+    overflow-y: auto;
+    padding: 40px;
+}
+.dyn-confirm-grid { max-width: 480px; }
+
+/* =============================================================================
+   アナリティクスサイドパネル（右カラム / WebGL Stealth HUD）
+   ========================================================================== */
+
+/* 「第二考」: 「第一考」(文字ごとにwriting-mode:vertical-rlを当てる方式)は
+   ラベル文字数がそのまま高さに直結し、括弧書きを残すと1画面に収まらない
+   問題があった。ユーザー提供の横書きラフ資料を踏まえ、タイトル行・
+   パラメーター行をまず「普通の横書き」(.ticker-header/.ticker-metrics、
+   ここは通常のhorizontal-tb)で組んでから、その帯(.ticker-rotated)全体を
+   transform:rotate(90deg)で丸ごと回転させてドロワーに収める方式に変更。
+   横書きのときと寸分違わぬ見た目(フォント・間隔・括弧書き込み)のまま
+   縦に収まるのが利点。
+   回転の仕組み: .ticker-rotated は transform-origin:0 0 の状態で
+   rotate(90deg) → translateY(-100%) の順に適用する(CSSのtransformは
+   右側の関数��ら先に効くため、まず自分の高さ分だけ上にずらしてから
+   回転させることで、回転後の見た目がちょうど右上を起点に下へ伸びる
+   形になる)。translateY(-100%)は要素自身の高さに対する相対値なので、
+   パラメーター数が増減してもピクセル値を書き直す必要がない。
+   .analytics-area 自体はoverflow-y:autoの固定サイズ枠として働き、
+   回転後の帯がその枠に収まりきらない場合は縦スクロールで残りを見る
+   （スマホ幅では4項目全部は収まらないため許容、タブレット幅ではほぼ
+   全部収まる）。
+   #bar-*要素はwebglHud.jsが引き続きstyle.heightを更新するためDOMには
+   残しているが、この方式では視覚的に使っていないためdisplay:noneにして
+   ある。 */
+.analytics-area { position: relative; background-color: #0c0c0c; border-left: 1px solid #1a1a1a; z-index: 15; width: 68px; height: 100%; overflow-y: auto; overflow-x: hidden; }
+.ticker-rotated {
+    position: absolute;
+    top: 0; left: 0;
+    transform-origin: 0 0;
+    transform: rotate(90deg) translateY(-100%);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    white-space: nowrap;
+}
+.ticker-header { display: flex; align-items: baseline; gap: 8px; padding: 8px 8px; border-bottom: 1px solid #1a1a1a; flex-shrink: 0; }
+.panel-title { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #ffffff; white-space: nowrap; }
+.panel-sub { margin: 0; font-size: 9px; color: #888888; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+.ticker-metrics { display: flex; align-items: baseline; gap: 20px; padding: 8px 8px; flex-shrink: 0; }
+.metric-item { font-size: 9px; color: #999999; font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; }
+.metric-value { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: #ffffff; letter-spacing: 0.3px; margin-left: 5px; }
+.bar-container { display: none; }
+.status-console { display: none; }
+.console-line { margin-bottom: 4px; }
+.active-alert { color: #ffaa00; }
+.limit-alert { color: #ff3c00; text-shadow: 0 0 4px rgba(255, 60, 0, 0.4); }
+
+/* =============================================================================
+   パラメーターパネル（動作データ）の表示可否
+   -----------------------------------------------------------------------------
+   1024px以下ではドロワー化されるため #toggleAnalyticsBtn の表示可否だけを
+   gateすればよいが（後述の@media(max-width:1024px)ブロック内）、1025px以上の
+   ワイド画面では.analytics-areaが常設の右カラム(380px)になる設計のため、
+   ここでは撮影設定画面の「📊 パラメーターを表示」チェックがオフの場合に
+   カラムごと非表示にし、グリッドも1カラムに畳む。専門家モード
+   (body.specialist-unlocked)は元々別レイアウト・別ロジックで
+   .analytics-areaを常に非表示にしているため、干渉しないよう明示的に除外する。
+   ========================================================================== */
+@media (min-width: 1025px) {
+    #page-shoot .hud-main-container { grid-template-columns: 1fr; }
+    .analytics-area { display: none; }
+    body.params-enabled:not(.specialist-unlocked) #page-shoot .hud-main-container { grid-template-columns: 1fr 68px; }
+    body.params-enabled:not(.specialist-unlocked) .analytics-area { display: flex; }
+}
+
+/* =============================================================================
+   専門家モード: PCワイド画面レイアウト（コンポーネント単位の出し分け）
+   旧版は body.specialist-unlocked に対して各要素へ !important 込みで
+   個別上書きしていたが、ここでは grid-template-columns の切替のみで対応する
+   ========================================================================== */
+
+/*
+ * #uiFloatingLayer は .visual-area の子要素として常に存在するため、真のGrid
+ * カラムには出来ない���専門家モードでは、.analytics-area(380px)側のグリッド
+ * トラックを「空の列」として確保しつつ、#uiFloatingLayerをfixedで右側に
+ * 重ねて「あたかも2カラム」に見せる（旧版の手法を踏襲しつつ、対象を
+ * bodyクラス1つに集約して重複定義を排除した）。
+ *
+ * 判定条件に (hover: hover) and (pointer: fine) を追加した理由（2026-07-30の
+ * ご指摘対応）: 以前は min-width:1024px のみで判定していたため、画面幅が
+ * 1024px を超える大き目のタブレット（縦持ちの小型タブレットは越えないが、
+ * 横持ちや大型タブレットは容易に超える）でも、マウス操作前提のこのPC向け
+ * サイドパネルレイアウトが適用されてしまっていた。その結果、確認したい
+ * 棒人間の描画エリアが62vwに圧迫され、かつ操作ボタン群(.controls)が
+ * 縦一列に並ぶ38vwの細い側面パネルに押し込まれることで、ボタンの背が高い
+ * 分だけスペースを取り、余計に窮屈になっていた。マウス（hover:hover）と
+ * 精密ポインタ（pointer:fine）を備えた実機（=タッチ操作のタブレットではない、
+ * 本来のPC/ノートPC）だけに限定することで、タッチ操作の大型タブレットは
+ * 画面幅に関わらず、既存の（小型タブレットと同じ）横並びボタン・全幅表示の
+ * レイアウトのままになる。
+ */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+    body.specialist-unlocked #page-shoot .hud-main-container { grid-template-columns: 62vw 1fr; }
+    body.specialist-unlocked .analytics-area { display: none; }
+
+    body.specialist-unlocked #uiFloatingLayer {
+        position: fixed;
+        left: auto; right: 0; top: 0; bottom: 0;
+        width: 38vw; height: 100vh;
+        transform: none;
+        max-width: none;
+        background: #070d1e;
+        border-left: 1px solid rgba(255,255,255,0.05);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        box-shadow: -10px 0 40px rgba(0,0,0,0.6);
+        z-index: 100;
+    }
+
+    body.specialist-unlocked #controlsBox { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+    body.specialist-unlocked .ui-top-buttons { margin-bottom: 24px; }
+    body.specialist-unlocked .controls { flex-direction: column; align-items: stretch; background: transparent; border: none; box-shadow: none; padding: 0; gap: 18px; }
+    body.specialist-unlocked button, body.specialist-unlocked select, body.specialist-unlocked .input-group { width: 100%; }
+    body.specialist-unlocked #timelineSlider { max-width: none; }
+    body.specialist-unlocked .radar-wrapper { top: auto; bottom: 20px; right: 40vw; z-index: 200; }
+}
+
+/* =============================================================================
+   タブレット/スマホでのアナリティクスパネル（ドロワー化）
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .hud-main-container { grid-template-columns: 1fr; }
+    /* height:100vhだと.shoot-steps(ステップインジケーター)の高さ分を
+       考慮できず、#uiFloatingLayer等(.visual-areaを基準にposition:absolute
+       配置)がその分だけ下にずれてナビゲーションバーと重なってしまっていた。
+       #page-shootをflexで縦積みにした(このファイル冒頭側を参照)ことで
+       祖先側のサイズは既に正しくなっているため、ここは100%を親から継承
+       させるだけでよい。 */
+    .visual-area { width: 100vw; height: 100%; }
+
+    /* 撮影ページの「撮影/結果」ビューの時だけ表示する（設定ステップやホーム等
+       他の画面にまで固定表示(position:fixed)がはみ出していたバグを修正）。
+       加えて撮影設定画面の「📊 パラメーターを表示」チェックがオンの場合のみ
+       表示する（body.params-enabledはshootFlow.jsのsyncParamsPanelVisibility()
+       が付け外しする）。 */
+    body.params-enabled #shootLiveView.active #toggleAnalyticsBtn { display: block !important; }
+
+    .analytics-area {
+        position: fixed;
+        /* 縦書きレイアウト化に伴い、パネル幅を340px→120pxへ縮小(以前は
+           画面の半分近くを占有してしまうという声への対応)。right側の
+           隠し位置もその幅に合わせて調整。
+           高さはheight:100vh(画面全体)ではなく、下端をbottomで切り上げて
+           いる。これはCOPレーダー(.radar-wrapper、右下に固定配置)が
+           ドロワーの真後ろに隠れてしまう問題への対応で、ドロワーの下端を
+           レーダーの上端より上で止めることで、開いた状態でも両方が同時に
+           見えるようにしている。値はレーダーのCSS位置(bottom offset+
+           高さ+タイトルラベル分)から逆算した目安値。 */
+        right: -68px; top: 0;
+        width: 68px; height: auto; bottom: 230px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 1500;
+        background: rgba(12, 12, 12, 0.95);
+        backdrop-filter: blur(20px);
+        border-left: 1px solid #1a1a1a;
+        border-bottom: 1px solid #1a1a1a;
+        border-radius: 0 0 0 var(--radius-md);
+        transition: right 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
+        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    }
+    .analytics-area.analytics-open { right: 0; }
+
+    #uiFloatingLayer { max-height: 85vh; overflow-y: visible; padding-bottom: 10px; }
+    #controlsBox { padding: 6px; }
+    .controls { padding: 10px 12px; gap: 8px; }
+}
+
+@media (max-width: 768px) {
+    /* スマホ用のCOPレーダー(bottom:178px, 高さ84px+タイトル分)はタブレット用
+       より低い位置にあるため、ドロワー下端の切り上げ量もそれに合わせて
+       スマホ側で上書きする(タブレット用の230pxのままだとスマホでは
+       まだレーダーに被ってしまう)。パネル幅(120px)はタブレットと同じ値を
+       維持する(ユーザー要望: 以前と変わらない幅のまま、フォントサイズ等の
+       調整で4項目を収める方針のため)。 */
+    .analytics-area { right: -130px; bottom: 300px; }
+    .analytics-area.analytics-open { right: 0; }
+}
+
+/* =============================================================================
+   スマホ表示（480px以下）
+   -----------------------------------------------------------------------------
+   以前はこのブロック全体を767px以下で適用していたが、タブレットの機種・
+   向きによってはCSS表示幅（devicePixelRatioで正規化された値）が物理的な
+   画面サイズに比例せず767px以下に収まってしまうことがあり、その場合に
+   大き目のタブレットでもこのブロック内の「スマホ専用」の見た目調整
+   （画角下部の黒いグラデーション帯、COPレーダーの縮小、撮影ボタンの
+   全幅化など）がまとめて誤適用されてしまう不具合があった
+   （2026-07-30のご指摘）。実機のスマホ（CSS表示幅はおおむね360〜430px
+   程度）だけに対象を絞るため、閾値を480pxへ統一する
+   （設定画面の「画面表示幅」表示で実測値を確認できる）。 */
+
+@media (max-width: 480px) {
+    body { overflow: hidden; }
+    /* height:100dvhだと(.visual-areaと同様に).shoot-steps分の高さを考慮
+       できず、.view-portが親(.visual-area、既に正しいサイズになっている)
+       を37pxほどはみ出してしまい、bottom基準で配置しているCOPレーダー等が
+       その分だけ本来より上にずれて見えていた。100%にして親から正しく
+       継承させる。 */
+    .view-port { width: 100vw; height: 100%; z-index: 5; }
+    /* 以前はここで object-fit:cover を強制しており、タブレット等の画面比率
+       によっては画角の右端/下端が切れて見える原因になっていた。ベース定義
+       (#canvasMP, #webgl-canvas の contain) と統一し、常に画角全体が
+       収まるようにする。 */
+    #video, #canvasMP { width: 100%; height: 100%; object-fit: contain; }
+
+    .hud-label { font-size: 13px; top: 15px; left: 15px; background: rgba(5, 8, 17, 0.65); backdrop-filter: blur(5px); padding: 6px 12px; border-radius: var(--radius-sm); }
+    .timer-display { top: 15px; right: 15px; font-size: 14px; padding: 6px 12px; }
+
+    .radar-wrapper { top: auto; bottom: 178px; right: 15px; left: auto; width: 84px; height: 84px; padding: 5px; background: rgba(5, 8, 17, 0.65); backdrop-filter: blur(5px); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.05); }
+    .radar-title { font-size: 8px; margin-bottom: 2px; }
+    .radar-box { width: 74px !important; height: 74px !important; }
+
+    .panel-header { font-size: 11px; }
+
+    #uiFloatingLayer {
+        position: absolute; bottom: var(--nav-size); left: 0; right: 0; width: 100%; transform: none;
+        background: linear-gradient(to top, rgba(5,8,17,0.98) 0%, rgba(5,8,17,0.8) 70%, rgba(5,8,17,0) 100%);
+        padding: 15px 15px 20px 15px;
+        z-index: 150;
+        display: flex; flex-direction: column; gap: 10px;
+        max-width: none; border: none; box-shadow: none;
+    }
+
+    .ui-top-buttons { overflow-x: auto; padding-bottom: 5px; width: 100%; -webkit-overflow-scrolling: touch; }
+    .ui-top-buttons::-webkit-scrollbar { display: none; }
+    .ui-top-btn { flex: 0 0 auto; font-size: 11px; padding: 6px 12px; border-radius: 6px; background: rgba(255,255,255,0.05); backdrop-filter: blur(5px); }
+
+    #controlsBox { width: 100%; }
+    .controls { flex-wrap: wrap; gap: 8px; background: transparent; border: none; padding: 0; box-shadow: none; justify-content: space-between; align-items: center; }
+    #settingsWrapper { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; justify-content: space-between; align-items: center; }
+
+    .input-group { flex: 1 1 45%; min-width: 100px; font-size: 11px; padding: 6px 8px; border-radius: var(--radius-sm); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
+    .input-group input { font-size: 11px; }
+    .controls select, .mode-dropdown, #durationSelect { flex: 1 1 45%; font-size: 11px; padding: 6px 8px; height: auto; border-radius: var(--radius-sm); background: rgba(5, 8, 17, 0.8); border: 1px solid rgba(255,255,255,0.08); }
+    #videoSource { flex: 1 1 100%; font-size: 11px; }
+
+    #startBtn, #recBtn, #calibrateMatBtn, #playbackControls button { flex: 1 1 100%; font-size: 14px; padding: 12px; border-radius: 10px; font-weight: 700; }
+    #recBtn { background: linear-gradient(135deg, var(--accent-red) 0%, #b71c1c 100%); color: white; border: none; box-shadow: 0 4px 15px rgba(255, 82, 82, 0.4); }
+
+    #timelineSlider { flex: 1 1 100%; margin: 10px 0; }
+    #frameCounter { flex: 1 1 auto; font-size: 11px; text-align: center; }
+
+    .modal-panel { width: 92%; padding: 18px; }
+}
+
+/* =============================================================================
+   印刷（レポートPDF出力）
+   ========================================================================== */
+
+@media print {
+    body { background: white; color: black; overflow: visible; font-family: sans-serif; }
+    #uiFloatingLayer, #dpadPanel, #historyPanel, .view-port, .modal-panel, .analytics-area, #toggleAnalyticsBtn, #appNav, .app-page, #shootResultBanner, #batchReviewOverlay, #dynConfirmOverlay { display: none !important; }
+    #dashboardOverlay { display: block !important; position: static; background: white; color: black; overflow: visible; padding: 0; }
+    .dash-header { border-bottom: 3px solid black; padding-bottom: 10px; margin-bottom: 25px; }
+    .dash-title { color: black; }
+    .dash-close, .dash-print { display: none !important; }
+    .dash-grid { display: block; max-width: 100%; }
+    .dash-card { background: white; border: 1px solid #ddd; box-shadow: none; break-inside: avoid; margin-bottom: 20px; padding: 15px; }
+    .dash-card h3 { color: black; border-bottom: 2px solid black; font-size: 16px; margin-bottom: 12px; }
+    .dash-metric { background: #f9f9f9; border: 1px solid #eee; font-size: 13px; padding: 6px 10px; }
+    .dash-metric span:first-child { color: #333; }
+    .dash-metric .val { color: black; }
+    .dash-metric .val.warn { color: #b30000; }
+    .dash-metric .val.good { color: #1b5e20; }
+    .ai-eval-card { margin-top: 20px; break-inside: avoid; }
+    .ai-eval-box { background: #f4f6fa !important; color: black !important; border-left: 4px solid #512da8 !important; border: 1px solid #ddd; font-size: 13px; padding: 15px; }
+    .ai-eval-box h2 { color: #4a148c; border-bottom: 1px solid #ccc; }
+    .report-image-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 10px !important; }
+    .report-image-card { background: #fff !important; border: 1px solid #ccc !important; color: #000 !important; padding: 5px !important; }
+    .report-image-card img { border: 1px solid #999 !important; }
+    .report-image-label { color: #000 !important; }
+    .report-image-sub { color: #555 !important; }
+}

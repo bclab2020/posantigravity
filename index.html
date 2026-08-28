@@ -3,189 +3,658 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CONNECT AI - Posture & Movement Analytics Engine</title>
-    
-    <!-- Design System CSS Link -->
-    <link rel="stylesheet" href="styles.css">
+    <title>ÉLITE PERFORMANCE - Athletecore Pro</title>
 
-    <!-- CDN Libraries (TensorFlow.js + BlazePose + Chart.js) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#050811">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css?v=4.9.21">
 </head>
 <body>
 
-<!-- 1. Video & Main Analysis Drawing Canvas -->
-<div class="view-port">
-    <canvas id="canvasMP"></canvas>
-    
-    <!-- Header Title Label -->
-    <div class="label">CONNECT AI - Bio-Scan v76.2</div>
-    
-    <!-- Calibration Scale Status Panel -->
-    <div class="info-panel" id="infoPanel">スケール未校正<br>大転子-ASIS基準: 未測定</div>
-    
-    <!-- Recording Countdown Display -->
-    <div id="timerDisplay" class="timer-display">REC 10.0s</div>
-    
-    <!-- Center of Pressure (COP) Sway Radar -->
-    <div id="radarWrapperMP" class="radar-wrapper">
-        <div class="radar-title">COP SWAY RADAR</div>
-        <canvas id="canvasRadarMP" class="radar-box" width="150" height="150"></canvas>
+<div id="appRoot">
+
+    <nav id="appNav">
+        <button type="button" class="nav-item" data-route="home"><span class="nav-icon">🏠</span>ホーム</button>
+        <button type="button" class="nav-item" data-route="shoot"><span class="nav-icon">📷</span>撮影</button>
+        <button type="button" class="nav-item" data-route="history"><span class="nav-icon">📂</span>履歴</button>
+        <button type="button" class="nav-item" data-route="settings"><span class="nav-icon">⚙️</span>設定</button>
+    </nav>
+
+    <main id="pageHost">
+
+        <!-- ============================================================
+             ホーム
+             ============================================================ -->
+        <section id="page-home" class="app-page" data-page="home">
+            <div class="home-greeting" id="homeGreeting">こんにちは</div>
+            <p class="home-sub" id="homeSub">今日のコンディションを記録しましょう。</p>
+            <div class="home-cards">
+                <button type="button" class="home-card primary" id="homeShootCard">
+                    <div class="home-card-title">📷 新規測定を始める</div>
+                    <div class="home-card-sub">モードを選んで撮影へ進みます</div>
+                </button>
+                <button type="button" class="home-card" id="homeHistoryCard">
+                    <div class="home-card-title">📂 測定履歴を見る</div>
+                    <div class="home-card-sub" id="homeRecentSummary">まだ測定データがありません</div>
+                    <div class="home-card-meta">履歴をすべて見る →</div>
+                </button>
+                <!-- 2026-08-26削除: 「🩺 専門家に相談する」カード(homeMentorCard)は
+                     企画者の依頼により撤去（js/ui/dashboard.jsのレポート下部の
+                     同機能ボタンとあわせて撤去）。 -->
+            </div>
+        </section>
+
+        <!-- ============================================================
+             撮影（測定フロー）: 設定 → 撮影 → 結果 の3ステップ
+             ============================================================ -->
+        <section id="page-shoot" class="app-page" data-page="shoot">
+
+            <div class="shoot-steps" id="shootSteps">
+                <div class="shoot-step" data-step="setup">モード選択</div>
+                <div class="shoot-step" data-step="live">撮影</div>
+                <div class="shoot-step" data-step="result">結果</div>
+            </div>
+
+            <!-- STEP1: 設定（モード選択・プロフィール入力） -->
+            <div id="shootSetupView">
+
+                <div class="setup-card">
+                    <div class="settings-section-label">選手情報</div>
+                    <div class="setup-field" id="nameInputGroup">
+                        <label>選手名/ID</label>
+                        <input type="text" id="patientName" placeholder="名前またはID">
+                    </div>
+                    <div class="setup-row">
+                        <div class="setup-field">
+                            <label>身長 (cm)</label>
+                            <input type="number" id="patientHeight" value="170" min="100" max="220">
+                        </div>
+                        <div class="setup-field">
+                            <label>足サイズ (cm)</label>
+                            <input type="number" id="footSize" value="25" min="15" max="40" step="0.5">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setup-card">
+                    <div class="settings-section-label">撮影設定</div>
+                    <div class="setup-field">
+                        <label>カメラ</label>
+                        <select id="videoSource"><option value="">カメラ検索中...</option></select>
+                    </div>
+
+                    <div class="setup-field">
+                        <label>カメラの向き（固定設置用）</label>
+                        <div class="analysis-tabs" id="orientationTabs">
+                            <button type="button" id="setupOrientNormalBtn" class="analysis-tab active">📺 横置き</button>
+                            <button type="button" id="setupOrientCwBtn" class="analysis-tab">📱 縦置き(時計回り補正)</button>
+                            <button type="button" id="setupOrientCcwBtn" class="analysis-tab">📱 縦置き(反時計回り補正)</button>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">カメラを縦向きに設置した場合に選択してください。映像が横向きに映る場合は、時計回り/反時計回りを切り替えて正しく見える方を選んでください。</div>
+                    </div>
+
+                    <div class="setup-field">
+                        <label>撮影スタイル</label>
+                        <div class="analysis-tabs">
+                            <button type="button" id="setupNormalShootBtn" class="analysis-tab active">🧍 通常撮影</button>
+                            <button type="button" id="setupSelfieShootBtn" class="analysis-tab">🤳 セルフ撮影</button>
+                        </div>
+                    </div>
+
+                    <div class="setup-field">
+                        <label>測定カテゴリ</label>
+                        <div class="analysis-tabs">
+                            <button type="button" id="tabStaticBtn" class="analysis-tab active">🧍 静止姿勢</button>
+                            <button type="button" id="tabSwayBtn" class="analysis-tab">⚖️ 重心動揺</button>
+                            <button type="button" id="tabDynamicBtn" class="analysis-tab">🏋️ 動作解析</button>
+                        </div>
+                    </div>
+
+                    <div class="setup-field" id="modeSelectGroup">
+                        <label>測定モード</label>
+                        <select id="modeSelect" class="mode-dropdown">
+                            <optgroup label="■ 静止姿勢アライメント">
+                                <option value="front" selected>🧍 前面</option>
+                                <option value="back">🧍 後面</option>
+                                <option value="l_side">🧍 左側面</option>
+                                <option value="r_side">🧍 右側面</option>
+                            </optgroup>
+                            <optgroup label="■ 重心動揺">
+                                <option value="sway">⚖️ 重���動揺</option>
+                            </optgroup>
+                            <optgroup label="■ 動的機能評価">
+                                <option value="dyn_overhead">🏋️ OHS [前面]</option>
+                                <option value="dyn_overhead_side">🏋️ OHS [側面]</option>
+                                <option value="dyn_single_r">🦵 片脚バランス [右軸]</option>
+                                <option value="dyn_single_l">🦵 片脚バランス [左軸]</option>
+                                <option value="dyn_flex_fwd">🙇 立位体前屈</option>
+                                <option value="dyn_flex_bwd">🤸 立位体後屈</option>
+                                <option value="dyn_shoulder_r">👐 肩複合可動性 [右上]</option>
+                                <option value="dyn_shoulder_l">👐 肩複合可動性 [左上]</option>
+                            </optgroup>
+                        </select>
+                        <div class="setup-orientation-hint" id="modeOrientationHint">📱 縦向き推奨（全身を近距離で収めます）</div>
+                    </div>
+
+                    <div class="setup-field">
+                        <label>撮影時間</label>
+                        <select id="durationSelect">
+                            <option value="5000" selected>⏱️ 5秒</option>
+                            <option value="10000">⏱️ 10秒</option>
+                            <option value="15000">⏱️ 15秒</option>
+                            <option value="20000">⏱️ 20秒</option>
+                            <option value="30000">⏱️ 30秒</option>
+                        </select>
+                    </div>
+
+                    <div class="setup-field">
+                        <label class="toggle-label"><input type="checkbox" id="showSwayAlert" checked> 動揺アラートを表示</label>
+                    </div>
+
+                    <div class="setup-field">
+                        <label class="toggle-label"><input type="checkbox" id="showParamsPanel" checked> 📊 パラメーターを表示</label>
+                    </div>
+
+                    <div class="setup-field">
+                        <label>カメラキャリブレーション（任意）</label>
+                        <button type="button" id="setupCalibrateBtn" class="btn gray-btn" style="width:100%;">🎯 カメラキャリブレーションを取る（固定設置の場合）</button>
+                        <div class="setup-orientation-hint" id="calibStatusHint" style="display:none; color:var(--accent-teal);">✅ 校正済み</div>
+                        <!-- 2026-08-03追加: 三脚等でカメラを完��固定できる場合の、より高精度な
+                             追加オプション。実寸が分かっているボード/マットの4隅にArUcoマーカーを
+                             貼って撮影すると、px/mmスケール校正（全モード共通）に加え、重心動揺
+                             モードの足首位置を実寸mmの2軸で測定できるようになる。手持ち・簡易
+                             スタンド撮影では使わなくてよく、その場合は従来通りの2点タップ校正
+                             （またはマーカー未使用時の従来ロジック）がそのまま使われる
+                             （js/core/arucoCalibration.js参照）。 -->
+                        <button type="button" id="setupArucoCalibrateBtn" class="btn gray-btn" style="width:100%; margin-top:8px;">🔲 4隅ArUcoで校正する（実寸2軸・高精度）</button>
+                        <div class="setup-orientation-hint" id="arucoCalibStatusHint" style="display:none; color:var(--accent-teal);">✅ 4隅ArUco校正済み</div>
+                        <!-- 2026-08-05追加: 研究機関からの要望。静止4方向（前面/後面/左右側面）の
+                             荷重左右比率・ケンダルのプラムライン判定で、基準線を従来の「両足の中心」
+                             から「4隅ArUcoマーカーの中心（対角線の交点＝ボードの物理的な絶対中心の
+                             投影位置）」へ差し替える。姿勢測定ガイドラインに沿って被験者をボード中心に
+                             正しく立たせた上で判定したい、という固定設置環境（研究機関等）専用の
+                             オプション。スマホ・タブレットでの一般利用には影響しない。ArUco校正が
+                             済んでいない場合は、このトグルがONでも自動的に従来方式へフォールバックする
+                             （js/core/state.jsのgetEffectiveArucoMidlineX参照）。 -->
+                        <label class="toggle-label" style="margin-top:8px; display:flex;"><input type="checkbox" id="useArucoMidlineToggle"> 静止姿勢でアルコ正中線を使用（研究機関向け）</label>
+                        <div class="setup-orientation-hint" style="color:var(--text-secondary); font-size:11px;">ONにすると、前面・後面・左右側面の判定基準を「両足の中心」から「アルコマーカーの絶対中心」に切り替えます。4隅ArUco校正が済んでいない場合は自動的に従来方式のまま動作します。</div>
+                    </div>
+                </div>
+
+                <div class="setup-card" id="importJsonGroup" style="display:none;">
+                    <div class="settings-section-label">専門家用</div>
+                    <div class="setup-field">
+                        <label>JSON読込</label>
+                        <input type="file" id="importSessionJson" accept=".json" style="display:none;">
+                        <button type="button" class="btn gray-btn" onclick="document.getElementById('importSessionJson').click()">📁 セッションJSONを読み込む</button>
+                    </div>
+                </div>
+
+                <button type="button" id="shootStartBtn" class="btn primary-btn">撮影へ進む ▶</button>
+            </div>
+
+            <!-- STEP2/3: 撮影ライブビュー + 結果(playback)ビュー -->
+            <div id="shootLiveView">
+                <div class="hud-main-container">
+                    <div class="visual-area">
+
+                        <div class="view-port">
+                            <video id="video" autoplay playsinline muted></video>
+                            <canvas id="canvasMP"></canvas>
+                            <canvas id="webgl-canvas"></canvas>
+
+                            <!-- 2026-08-07追加: キャリブレーション時（アルコ・タップ両方）にカメラ��
+                                 おおむね合わせるための目安線。#calibGuideLinesが表示されている間だけ
+                                 出す（js/ui/shootFlow.js参照）。pointer-events:noneで、タップ校正時の
+                                 マット端タップ操作を一切邪魔しないようにしている。 -->
+                            <div id="calibGuideLines" class="calib-guide-lines" style="display:none;">
+                                <div class="calib-guide-line calib-guide-vertical"></div>
+                                <div class="calib-guide-line calib-guide-horizontal"></div>
+                            </div>
+
+                            <div id="cameraModeBadge" class="camera-mode-badge">🧍 通常撮影（標準）</div>
+
+                            <div id="timerDisplay" class="timer-display">REC 10.0s</div>
+
+                            <div id="radarWrapperMP" class="radar-wrapper">
+                                <div class="radar-title">COP RADAR</div>
+                                <canvas id="canvasRadarMP" class="radar-box" width="150" height="150"></canvas>
+                            </div>
+
+                            <div id="gyroLevelContainer" class="gyro-level-container" style="display:none;">
+                                <div class="level-circle"></div>
+                                <div class="level-dot" id="gyroLevelDot"></div>
+                                <div class="level-status" id="gyroLevelStatus">📐 カメラを垂直に保ってください</div>
+                            </div>
+
+                            <div id="autoRecCountdown" class="auto-rec-countdown" style="display:none;">3</div>
+                            <div id="autoRecReadyMessage" class="auto-rec-ready-message" style="display:none;">Ready... 静止してください</div>
+                        </div>
+
+                        <div id="dpadPanel">
+                            <div class="dpad-header">
+                                <span>🎯 ポイント微調整</span>
+                                <button class="dpad-close" id="dpadClose">✖</button>
+                            </div>
+                            <div class="dpad-row"><button class="dpad-btn" id="dpadUp">▲</button></div>
+                            <div class="dpad-row">
+                                <button class="dpad-btn" id="dpadLeft">◀</button>
+                                <button class="dpad-btn dpad-step-btn" id="dpadStep">1px</button>
+                                <button class="dpad-btn" id="dpadRight">▶</button>
+                            </div>
+                            <div class="dpad-row"><button class="dpad-btn" id="dpadDown">▼</button></div>
+                        </div>
+
+                        <!-- 2026-08-03追加: 「🔲 4隅ArUcoで校正する」から入る、床面キャリブレーション
+                             専用パネル。#dpadPanelと同じ位置づけで、ライブ映像の上に
+                             重ねて表示する（js/ui/shootFlow.js・js/core/arucoCalibration.js参照）。 -->
+                        <div id="arucoCalibPanel" style="display:none;">
+                            <div class="panel-header">🔲 4隅ArUco床面キャリブレーション</div>
+                            <div id="arucoCalibBoardInputs">
+                                <div style="font-size:11px; color:var(--text-secondary); margin-bottom:4px;">カメラから見て ID:0=左上・1=右上・2=右下・3=左下 の順に貼ってください</div>
+                                <label>ボード横(mm) <input type="number" id="arucoBoardWMm" value="500" min="50" max="5000" step="1"></label>
+                                <label>ボード縦(mm) <input type="number" id="arucoBoardHMm" value="500" min="50" max="5000" step="1"></label>
+                                <button type="button" id="arucoPrintGuideBtn" class="btn gray-btn">🖨️ マーカーを準備する</button>
+                                <button type="button" id="arucoStartDetectBtn" class="btn purple-btn">検出開始</button>
+                            </div>
+                            <div id="arucoCalibDetectStatus" style="display:none;"></div>
+                            <div id="arucoCalibResult" style="display:none;"></div>
+                            <div id="arucoCalibActions" style="display:none;">
+                                <button type="button" id="arucoCalibConfirmBtn" class="btn green-btn">✅ この内容で校正する</button>
+                                <button type="button" id="arucoCalibRetryBtn" class="btn gray-btn">🔁 やり直す</button>
+                            </div>
+                            <button type="button" id="arucoCalibCancelBtn" class="btn gray-btn" style="margin-top:8px;">✖ キャンセル</button>
+                        </div>
+
+                        <!-- 「モード選択に戻る」は画角をできるだけ広く使えるよう、下部中央の
+                             操作スタック(#uiFloatingLayer)から独立させ、左下の固定位置に配置する
+                             （以前はスタック内の最下部にあり、実機でナビゲーションバーに下半分が
+                             隠れてしまっていたため）。position:fixedの基準がuiFloatingLayerの
+                             transform���引っ張られないよう、意図的にその外（.visual-areaの直接の
+                             子）に置いている。 -->
+                        <button type="button" id="shootBackToSetupBtn" class="ui-top-btn">◀ モード選択に戻る</button>
+
+                        <div id="uiFloatingLayer">
+                            <div id="actionDock">
+                                <!-- セルフタイマー（検証用・一時的機能。2026-08-24追加、後日削除予定のため体裁は簡易のまま） -->
+                                <select id="selfTimerSelect" title="セルフタイマー（検証用・一時的機能）" style="margin-right:6px;">
+                                    <option value="0">タイマーなし</option>
+                                    <option value="3">3秒</option>
+                                    <option value="5">5秒</option>
+                                    <option value="10">10秒</option>
+                                </select>
+                                <button id="startBtn" disabled>⏳ 起動準備中...</button>
+                                <button id="recBtn" style="display:none;" disabled>撮影</button>
+                                <button id="nextMeasureBtn" class="green-btn active-pulse" style="display:none;">決定して左側面へ ➡</button>
+                            </div>
+
+                            <!-- セルフタイマー（検証用・一時的機能）のカウントダウン表示。体裁は簡易のまま。 -->
+                            <div id="selfTimerCountdown" style="display:none; position:fixed; top:38%; left:50%; transform:translate(-50%,-50%); font-size:140px; font-weight:bold; color:#fff; text-shadow:0 0 25px rgba(0,0,0,0.9); z-index:9999; pointer-events:none;"></div>
+
+                            <div id="controlsScrollArea">
+                                <div class="ui-top-buttons">
+                                    <!-- 校正の入口は撮影設定カードの「🎯 カメラキャリブレーションを取る」に統一。
+                                         このボタン自体はcalibration.js/shootFlow.jsが内部的にクリックして使う
+                                         既存の2点タップ処理の土台として引き続き必要なため、要素は残しつつ
+                                         非表示にする。 -->
+                                    <button id="calibrateMatBtn" class="purple-btn" style="display:none;">📏 マット校正(45cm)</button>
+                                </div>
+
+                                <div id="controlsBox">
+                                    <div id="mainControls"></div>
+
+                                    <div class="controls" id="playbackControls" style="display:none;">
+                                        <button id="backToCamBtn" class="gray-btn">🔙 再測定へ</button>
+                                        <!-- 4面確認・修正画面(#batchReviewOverlay)から「✂️ 微調整」で
+                                             個別のポーズを開いた時だけ、上のbackToCamBtnの代わりにこちらを
+                                             表示する(js/ui/controls.jsのupdateModeUI参照)。修正内容を
+                                             同じセッションIDへ上書き保存してから確認・修正画面へ戻る。 -->
+                                        <button id="backToBatchReviewBtn" class="gray-btn" style="display:none;">✅ 保存して4面確認へ戻る</button>
+                                        <!-- 前面→左側面→後面→右側面と連続で撮っていく間の確認画面は
+                                             「再測定へ/決定して次へ」だけに絞り、再生・微調整・書き出し系は
+                                             最後の右側面(r_side)の確認画面と、動作解析(動的種目)の確認画面
+                                             だけに残す(js/ui/controls.js の updateModeUI が
+                                             #reviewExtraTools の表示・非表示を切り替える)。
+                                             静止4方向を連続でテンポよく撮りたいという要望に対応。 -->
+                                        <div id="reviewExtraTools" class="review-extra-tools">
+                                            <button id="playPauseBtn" class="blue-btn">▶ 再生</button>
+                                            <select id="playbackSpeedSelect" class="mode-dropdown playback-speed-select">
+                                                <option value="0.25">0.25倍</option>
+                                                <option value="0.5">0.5倍</option>
+                                                <option value="1" selected>1.0倍</option>
+                                                <option value="2">2.0倍</option>
+                                            </select>
+                                            <input type="range" id="timelineSlider" min="0" max="100" value="0">
+                                            <span id="frameCounter">0 / 0</span>
+                                            <button id="editFrameBtn" class="orange-btn">✂️ 微調整</button>
+                                            <button id="togglePhotoBgBtn" class="gray-btn" style="display:none;">🖼 写真を表示</button>
+                                            <button id="exportSessionJsonBtn" class="purple-btn" style="display:none;">📤 JSON書出</button>
+                                            <button id="exportVideoBtn" class="blue-btn" onclick="window.startVideoExport()">🎥 動画出力</button>
+                                            <button id="downloadCsvBtn" class="green-btn" disabled onclick="window.startCsvExport()">📊 CSV</button>
+                                            <button id="printReportBtn" class="orange-btn" onclick="window.prepareAndPrintReport()">📄 レポート</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <canvas id="canvasCombined" style="display:none;"></canvas>
+                    </div>
+
+                    <button id="toggleAnalyticsBtn" class="ui-top-btn" style="position:fixed; right:20px; top:20px; z-index:1600; border-color:var(--accent-teal); color:var(--accent-teal); background:rgba(5,8,17,0.85); backdrop-filter:blur(5px); display:none;">📊 パラメーター</button>
+
+                    <div class="analytics-area" id="analyticsArea">
+                        <!-- ��イアウト方針(ユーザー提供の横書きラフ資料を採用): タイトル+サブタイトルと
+                             4つのパラメーターを、まず「普通の横書き」で1行ずつ(.ticker-header /
+                             .ticker-metrics)組んでおき、その帯全体をCSSのtransform:rotate(90deg)で
+                             丸ごと90度回転させて縦のドロワーに収める方式。文字ごとにwriting-mode:
+                             vertical-rlを当てる旧方式と違い、括弧書きを含むフルラベルのレイアウトが
+                             横書きのときと全く同じ見た目のまま縦に収まる。
+                             回転後、タイトル列は右端に固定され、パラメーター列(名称+数値のペアが
+                             上から下へ4つ)がその左に続く。スマホ幅では4つ全部が入りきらないため
+                             .analytics-area自体を縦スクロール可能にしている(タイトルは列として
+                             独立しているため、スクロールしても読める範囲に留まる)。
+                             #bar-l-knee等のバー要素はこの新レイアウトでは非表示にしているが、
+                             webglHud.jsが引き続��style.heightを更新するためDOMには残してある。 -->
+                        <div class="ticker-rotated">
+                            <div class="ticker-header">
+                                <h1 class="panel-title">Biomechanical Load</h1>
+                                <div class="panel-sub">Stealth Analytics Engine</div>
+                            </div>
+
+                            <div class="ticker-metrics">
+                                <span class="metric-item">L-Knee Flexion (Rectus Femoris) <b class="metric-value" id="val-l-knee">0.0°</b><span class="bar-container" style="display:none;"><span id="bar-l-knee" class="bar-fill"></span></span></span>
+                                <span class="metric-item">R-Knee Flexion (Rectus Femoris) <b class="metric-value" id="val-r-knee">0.0°</b><span class="bar-container" style="display:none;"><span id="bar-r-knee" class="bar-fill"></span></span></span>
+                                <span class="metric-item">Pelvic Sagittal Tilt <b class="metric-value" id="val-pelvic-tilt">0.0°</b><span class="bar-container" style="display:none;"><span id="bar-pelvic-tilt" class="bar-fill"></span></span></span>
+                                <span class="metric-item">Cervical Sagittal Offset <b class="metric-value" id="val-cervical">0.0 mm</b><span class="bar-container" style="display:none;"><span id="bar-cervical" class="bar-fill"></span></span></span>
+                            </div>
+                        </div>
+
+                        <div class="status-console" id="console-output" style="display:none;">
+                            <div class="console-line">SYS // ATHLETECORE HUD LOADED SUCCESSFUL</div>
+                            <div class="console-line">SYS // LISTENING TO MEDIAPIPE MOTIONSTREAM</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP4: 撮影完了直後のミニバナー。ここでは「もう一度撮る/
+                 確認画面へ進む」の二択だけに絞り、再生・微調整・確定・
+                 CSV・レポートといった詳しい操作は、次の#dynConfirmOverlay
+                 （撮影確認画面）へ進んでから行う（静止4方向の4面確認・
+                 修正画面と役割を完全に揃える。2026-07-29のご要望対応。
+                 v4.6.23）。 -->
+            <div id="shootResultBanner">
+                <div class="result-banner-title" id="resultBannerTitle">🎬 撮影が完了しました</div>
+                <div class="result-banner-actions">
+                    <button type="button" class="btn gray-btn" id="resultReshootBtn">🔁 再測定</button>
+                    <button type="button" class="btn green-btn" id="resultGotoConfirmBtn">✅ 決定して確認画面へ</button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ============================================================
+             履歴
+             ============================================================ -->
+        <section id="page-history" class="app-page" data-page="history">
+            <div id="historyPanel">
+                <div class="history-header"><span>📂 測定履歴</span><button id="closeHistoryBtn">✖</button></div>
+                <!-- 4面確認・修正画面で「確定」する前のポーズは通常ここには出さないが、
+                     確定せずにレポートだけ見て終わってしまった場合などに、撮影データ
+                     自体が消えたわけではないことを確認・復旧できるようにする。 -->
+                <label id="historyShowDraftsToggle" style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); padding:0 4px 10px;">
+                    <input type="checkbox" id="historyShowDraftsCheckbox"> 未確定（下書き）のデータも表示する
+                </label>
+                <div class="history-list" id="historyListContainer"></div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+             設定
+             ============================================================ -->
+        <section id="page-settings" class="app-page" data-page="settings">
+            <div class="settings-title">設定</div>
+
+            <div class="settings-section-label">アカウント</div>
+            <div class="settings-list">
+                <div id="accountBadge" class="settings-item account-badge" style="display:none;">
+                    <span class="account-name">未ログイン</span>
+                    <button id="accountSignOutBtn" class="account-signout">ログアウト</button>
+                </div>
+            </div>
+
+            <div class="settings-section-label">アプリ設定</div>
+            <div class="settings-list">
+                <button type="button" class="settings-item" id="showApiBtn">⚙️ Gemini APIキー設定 <span class="settings-item-arrow">›</span></button>
+            </div>
+
+            <div class="settings-section-label">専門家向け</div>
+            <div class="settings-list">
+                <button type="button" class="settings-item specialist-link" id="modeUnlockBtn">🔒 専門家ログイン <span class="settings-item-arrow">›</span></button>
+                <button type="button" class="settings-item danger" id="logoutBtn" style="display:none;">🔓 専門家モードからログアウト</button>
+            </div>
+
+            <div class="settings-section-label">このアプリについて</div>
+            <div class="settings-list">
+                <div class="settings-item" style="cursor:default;">ÉLITE PERFORMANCE - Athletecore Pro <span class="settings-item-arrow">v4.9.21</span></div>
+            </div>
+
+            <!-- 撮影画面には表示しない（一般利用者には不要な内部数値のため）。
+                 検証段階のみ、直近の測定で使われたスケール係数を確認できるように、
+                 設定画面のこの1行だけに残している。 -->
+            <div class="settings-section-label">検証用情報</div>
+            <div class="settings-list">
+                <div class="settings-item" style="cursor:default;">📏 スケール係数（直近の測定・検証用） <span class="settings-item-arrow" id="debugScaleRatio">未校正</span></div>
+                <div class="settings-item" style="cursor:default;">📷 カメラ実解像度（直近の起動時） <span class="settings-item-arrow" id="debugCameraResolution">未起動</span></div>
+                <div class="settings-item" style="cursor:default;">📐 画面表示幅（CSSピクセル） <span class="settings-item-arrow" id="debugViewportSize">-</span></div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- ============================================================
+     モーダル群（どのページからでも呼び出される。ルーティングの影響を
+     受けないよう #appRoot の外＝body直下に配置する）
+     ============================================================ -->
+
+<div id="authModal" class="modal-panel auth-modal">
+    <div class="modal-header">
+        <div class="auth-modal-logo">ÉLITE PERFORMANCE <span class="badge">Precision in Motion</span></div>
+        <h3>ようこそ ÉLITE PERFORMANCE へ</h3>
+    </div>
+    <div class="modal-body">
+        <div class="auth-tabs">
+            <button type="button" id="authTabSignup" class="analysis-tab active">新規会員登録</button>
+            <button type="button" id="authTabLogin" class="analysis-tab">ログイン</button>
+            <button type="button" id="authTabGuest" class="analysis-tab">ゲスト</button>
+        </div>
+
+        <div id="authSignupForm">
+            <div class="input-field"><label>お名前</label><input type="text" id="authSignupName" placeholder="山田 太郎"></div>
+            <div class="input-field"><label>メールアドレス</label><input type="email" id="authSignupEmail" placeholder="you@example.com"></div>
+            <div class="input-field"><label>パスワード（6文字以上）</label>
+                <div class="password-field">
+                    <input type="password" id="authSignupPassword" placeholder="••••••••">
+                    <button type="button" class="password-toggle-btn" data-target="authSignupPassword" aria-label="パスワードを表示">表示</button>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <div class="input-field" style="flex:1;"><label>身長 (cm)</label><input type="number" id="authSignupHeight" value="170"></div>
+                <div class="input-field" style="flex:1;"><label>足サイズ (cm)</label><input type="number" id="authSignupFootSize" value="25"></div>
+            </div>
+            <button id="authSignupBtn" class="btn primary-btn" style="width:100%;">確認画面へ</button>
+        </div>
+
+        <div id="authSignupConfirm" style="display:none;">
+            <p class="help-text" style="margin:0 0 14px 0;">以下の内容で登録します。よろしければ「この内容で登録する」を押してください。</p>
+            <div class="confirm-list">
+                <div class="confirm-row"><span class="confirm-label">お名前</span><span class="confirm-value" id="confirmName"></span></div>
+                <div class="confirm-row"><span class="confirm-label">メールアドレス</span><span class="confirm-value" id="confirmEmail"></span></div>
+                <div class="confirm-row"><span class="confirm-label">身長</span><span class="confirm-value" id="confirmHeight"></span></div>
+                <div class="confirm-row"><span class="confirm-label">足サイズ</span><span class="confirm-value" id="confirmFootSize"></span></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:18px;">
+                <button id="authSignupBackBtn" class="btn gray-btn" style="flex:1;">戻って修正する</button>
+                <button id="authSignupConfirmBtn" class="btn primary-btn" style="flex:1;">登録する</button>
+            </div>
+        </div>
+
+        <div id="authLoginForm" style="display:none;">
+            <div class="input-field"><label>メールアドレス</label><input type="email" id="authLoginEmail" placeholder="you@example.com"></div>
+            <div class="input-field"><label>パスワード</label>
+                <div class="password-field">
+                    <input type="password" id="authLoginPassword" placeholder="••••••••">
+                    <button type="button" class="password-toggle-btn" data-target="authLoginPassword" aria-label="パスワードを表示">表示</button>
+                </div>
+            </div>
+            <button id="authLoginBtn" class="btn primary-btn" style="width:100%;">ログイン</button>
+        </div>
+
+        <div id="authGuestForm" style="display:none;">
+            <p class="help-text" style="margin:0 0 14px 0; font-size:12px;">登録せずにアプリを試せます。測定データはこの端末にのみ保存され、他の端末やアカウントとは共有されません（後から会員登録すると引き継げます）。</p>
+            <button id="authGuestBtn" class="btn primary-btn" style="width:100%;">ゲストとして始める</button>
+        </div>
+
+        <p class="error-text" id="authErrorMsg" style="color:var(--accent-red); font-size:12px; display:none; margin-top:10px;"></p>
+
+        <p class="help-text" style="text-align:center; margin-top:18px;">※本アプリは開発段階の検証運用です。ご利用の際は事前にご案内した内容にご同意のうえお使いください。</p>
     </div>
 </div>
 
-<!-- 2. Spine & Pelvic Silhouette Matching Slider Overlay -->
-<div id="tiltPanel">
-    <div class="tilt-header">📐 骨盤・背中アライメント調整</div>
-    <div style="display:flex; justify-content:space-between; color:#8a99ad; font-size:9px; margin-bottom: 4px;">
-        <span>後傾 (-20°)</span>
-        <span>前傾 (+30°)</span>
+<div id="apiSettingPanel" class="modal-panel">
+    <div class="modal-header"><h3>⚙️ Gemini API設定</h3><button id="closeApiBtn" class="close-btn">✖</button></div>
+    <div class="modal-body">
+        <p>Google Gemini APIキーを入力すると、測定データに基づいた高度なAI臨床評価レポートを作成できます。</p>
+        <div class="input-field"><label for="geminiApiKey">Gemini API Key</label>
+            <div class="password-field">
+                <input type="password" id="geminiApiKey" placeholder="AIzaSy...">
+                <button type="button" class="password-toggle-btn" data-target="geminiApiKey" aria-label="キーを表示">表示</button>
+            </div>
+        </div>
+        <p class="help-text">※キーは暗号化されずローカルブラウザの localStorage にのみ保存され、外部サーバーを経由せず直接GoogleのAPIとやり取りされます。</p>
     </div>
-    <input type="range" id="pelvicTiltSlider" class="tilt-slider" min="-20" max="30" value="0">
-    <div class="tilt-val" id="tiltValDisplay">0° (ニュートラル)</div>
-    <p style="font-size:10px; color: var(--text-muted); line-height: 1.4; margin-top:10px; margin-bottom: 0;">
-        ※被験者の実際の背中やお尻の輪郭に重なるようスライダーを調整してください。
-    </p>
+    <div class="modal-footer"><button id="saveApiBtn" class="btn primary-btn">設定を保存</button></div>
 </div>
 
-<!-- 3. Keypoint Micro-Adjustment D-Pad Panel -->
-<div id="dpadPanel">
-    <div class="dpad-header">
-        <span id="dpadTitle">🎯 関節微調整</span>
-        <button class="dpad-close" id="dpadClose">✖</button>
+<div id="specialistLoginModal" class="modal-panel">
+    <div class="modal-header"><h3>🔒 専門家モード認証</h3><button id="closeLoginBtn" class="close-btn">✖</button></div>
+    <div class="modal-body">
+        <p>事業者・専門家向けの分析カルテ作成・骨格補正ツールを開放します。</p>
+        <div class="input-field"><label for="specialistEmailInput">専門家メールアドレス</label><input type="email" id="specialistEmailInput" placeholder="specialist@example.com"></div>
+        <div class="input-field"><label for="specialistPassInput">パスワード</label>
+            <div class="password-field">
+                <input type="password" id="specialistPassInput" placeholder="パスワードを入力してください">
+                <button type="button" class="password-toggle-btn" data-target="specialistPassInput" aria-label="パスワードを表示">表示</button>
+            </div>
+        </div>
+        <p class="error-text" id="loginErrorMsg" style="color:var(--accent-red); font-size:12px; display:none; margin-top:5px;">⚠️ IDまたはパスワードが正しくありません。</p>
     </div>
-    <div class="dpad-row">
-        <button class="dpad-btn" id="dpadUp">▲</button>
-    </div>
-    <div class="dpad-row">
-        <button class="dpad-btn" id="dpadLeft">◀</button>
-        <button class="dpad-btn" id="dpadStep" style="font-size:12px; background:#1976d2; color:white; border:none; width: 50px;">1px</button>
-        <button class="dpad-btn" id="dpadRight">▶</button>
-    </div>
-    <div class="dpad-row">
-        <button class="dpad-btn" id="dpadDown">▼</button>
-    </div>
+    <div class="modal-footer"><button id="submitLoginBtn" class="btn primary-btn">ロック解除</button></div>
 </div>
 
-<!-- 4. Session History Sidebar Panel -->
-<div id="historyPanel">
-    <div class="history-header">
-        <span>📂 過去の測定データ履歴</span>
-        <button id="closeHistoryBtn">✖</button>
+<div id="mentorBookingModal" class="modal-panel">
+    <div class="modal-header"><h3>💬 専門家メンター個別指導セッション予約（有料）</h3><button id="closeBookingBtn" class="close-btn">✖</button></div>
+    <div class="modal-body">
+        <p>測定データとAIレポートだけでは解決しない課題や、選手特有のトレーニング作成を、登録専門家がオンラインビデオで直接指導します。</p>
+        <div class="input-field">
+            <label for="mentorSelect">メンターを選択</label>
+            <select id="mentorSelect" style="width:100%;">
+                <option value="physio_tanaka">田中 誠 (理学療法士 / 成長期脊柱アライメント専門)</option>
+                <option value="trainer_sato">佐藤 翼 (JASAアスレティックトレーナー / 投球動作分析・OHS)</option>
+                <option value="sprint_suzuki">鈴木 翔 (陸上100m元選手 / ジュニアスプリント・重心軌跡)</option>
+            </select>
+        </div>
+        <div class="input-field"><label for="bookingDate">希望日時</label><input type="datetime-local" id="bookingDate"></div>
+        <div class="input-field">
+            <label for="bookingInquiry">特に相談したいこと</label>
+            <textarea id="bookingInquiry" placeholder="例: 反り腰を指摘されましたが、サッカーのダッシュ時に痛みがあります。改善ストレッチの方法を詳しく教えてほしいです。" style="width:100%; height:70px; background:#0f1c3f; border:1px solid rgba(255,255,255,0.1); border-radius:8px; color:white; padding:10px; font-family:inherit; resize:none; outline:none; box-sizing:border-box;"></textarea>
+        </div>
+        <p class="help-text">※個別セッションは1枠45分/¥5,500(税込)です。予約完了後、担当メンターから確認メールが届きます。</p>
     </div>
-    <div class="history-list" id="historyListContainer"></div>
+    <div class="modal-footer"><button id="submitBookingBtn" class="btn primary-btn">個別予約を実行</button></div>
 </div>
 
-<!-- 5. Dynamic Biomechanical Report Dashboard Overlay -->
+<div id="gyroPermissionModal" class="modal-panel" style="display:none;">
+    <div class="modal-header"><h3>📐 傾きセンサーの有効化</h3></div>
+    <div class="modal-body"><p>手持ち撮影時の測定精度を担保するため、スマートフォンの傾きセンサー（ジャイロ）を有効化する必要があります。</p></div>
+    <div class="modal-footer"><button id="submitGyroPermissionBtn" class="btn primary-btn">水準器を有効化する</button></div>
+</div>
+
 <div id="dashboardOverlay">
     <div class="dash-header">
         <div>
-            <h2 class="dash-title">📊 統合バイオメカニクス姿勢動作評価レポート</h2>
-            <div style="color:var(--text-muted); font-size: 13px; margin-top:5px;">CONNECT AI Posture & Movement Analytics - Digital Report</div>
+            <h2 class="dash-title" id="dashReportTitle">📊 統合バイオメカニクス評価レポート</h2>
+            <div style="color:#8892b0; font-size: 14px; margin-top:5px;" id="dashReportSub">ÉLITE PERFORMANCE - Athletecore Pro</div>
         </div>
-        <div>
-            <button class="dash-print" onclick="window.print()">📄 PDF保存・カルテ印刷</button>
-            <button class="dash-close" onclick="document.getElementById('dashboardOverlay').style.display='none'">✖ 閉じる</button>
+        <div class="dash-actions">
+            <button class="dash-print" onclick="window.print()">📄 PDF保存・印刷</button>
+            <button class="dash-close" id="dashboardCloseBtn">✖ 閉じる</button>
         </div>
     </div>
     <div class="dash-grid" id="dashGrid"></div>
 </div>
 
-<!-- 6. Custom Alert & Confirm Dialog Modal Container -->
-<div id="customModal">
-    <div class="modal-box">
-        <h3 id="modalTitle" class="modal-title"></h3>
-        <p id="modalMessage" class="modal-body"></p>
-        <div class="modal-footer">
-            <button id="modalCancelBtn" class="modal-btn modal-cancel">キャンセル</button>
-            <button id="modalOkBtn" class="modal-btn modal-ok">OK</button>
+<!-- 動作解析（動画/連続撮影）の「撮影確認」画面。js/ui/dynConfirm.js が
+     制御する。#batchReviewOverlay（静止4方向）と全く同じ役割・同じ見た目の
+     オーバーレイを、動作解析1件用に用意したもの。撮影直後（未確定���ード、
+     dynConfirmFinalizeBtnで確定・自動レポート表示）だけでなく、v4.6.24より
+     履歴一覧からこのモードのデータをタップした時にも同じ画面を再利用する
+     （履歴モード、dynConfirmReportBtn/dynConfirmCloseBtnを表示）。
+     「レポートを見る」は未確定モードの間はあえて置いていない —
+     確定する前にレポートだけ見られてしまうと、見れたのに履歴には出てこない
+     という混乱のもとになるため。「✅ 撮影確定」を押した時点で自動的に
+     レポートを開く（js/ui/batchReview.jsのfinalizeBatch()と同じ挙動）。
+     v4.6.23で新規追加、v4.6.24で履歴モードを追加。 -->
+<div id="dynConfirmOverlay">
+    <div class="dash-header">
+        <div>
+            <h2 class="dash-title" id="dynConfirmTitle">🎬 撮影確認</h2>
+            <div style="color:#8892b0; font-size: 14px; margin-top:5px;" id="dynConfirmSubtitle">内容を確認し、必要であれば詳細を見てから確定してください</div>
+        </div>
+        <div class="dash-actions">
+            <button class="dash-close" id="dynConfirmCsvBtn">📊 CSV書き出し</button>
+            <button class="dash-print" id="dynConfirmReportBtn" style="display:none;">📄 レポートを見る</button>
+            <button class="dash-print" id="dynConfirmFinalizeBtn">✅ この内容で確定してレポート作成 📊</button>
+            <button class="dash-close" id="dynConfirmCloseBtn" style="display:none;">✖ 閉じる</button>
         </div>
     </div>
+    <div class="batch-review-grid dyn-confirm-grid" id="dynConfirmGrid"></div>
 </div>
 
-<!-- 7. Main Floating Interaction Control Layer -->
-<div id="uiFloatingLayer">
-    <!-- Top Action Shortcuts -->
-    <div class="ui-top-buttons">
-        <button id="toggleUiBtn" class="ui-top-btn">🔽 UIを隠す</button>
-        <button id="showHistoryBtn" class="ui-top-btn">📂 履歴を開く</button>
-        <button id="showDashboardBtn" class="ui-top-btn dash-top-btn" onclick="window.prepareAndPrintReport()">📊 ダッシュボード</button>
-    </div>
-    
-    <!-- Dynamic controls boxes -->
-    <div id="controlsBox">
-        <!-- A. Camera Stream Control Panel -->
-        <div class="controls" id="mainControls">
-            <select id="videoSource">
-                <option value="">カメラ検索中...</option>
-            </select>
-
-            <button id="startBtn" disabled>⏳ 起動準備中...</button>
-            
-            <div style="display:flex; align-items:center; gap:6px; background:rgba(255,255,255,0.04); padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1);">
-                <span style="color:var(--text-sub); font-size:12px; font-weight:700;">被験者身長</span>
-                <input type="number" id="patientHeight" value="170" style="width:50px; background:transparent; color:var(--accent-cyan); border:none; text-align:center; font-size:14px; font-weight:700; border-bottom:1px solid rgba(255,255,255,0.2);">
-                <span style="color:var(--text-muted); font-size:12px;">cm</span>
-            </div>
-            
-            <button id="calibrateMatBtn">📏 マット校正</button>
-
-            <!-- Mode Selector -->
-            <select id="modeSelect" class="mode-dropdown" onchange="window.switchReportTab(this.value)">
-                <optgroup label="■ 静的姿勢アライメント">
-                    <option value="front" selected>🧍 前面（静的アライメント）</option>
-                    <option value="back">🧍 後面（静的アライメント）</option>
-                    <option value="l_side">🧍 左側面（ケンダル分析）</option>
-                    <option value="r_side">🧍 右側面（ケンダル分析）</option>
-                </optgroup>
-                <optgroup label="■ 動的動作分析評価">
-                    <option value="dyn_overhead">🏋️ OHS [前面スクワット]</option>
-                    <option value="dyn_overhead_side">🏋️ OHS [側面スクワット]</option>
-                    <option value="dyn_single_r">🦵 片脚バランス [右脚軸]</option>
-                    <option value="dyn_single_l">🦵 片脚バランス [左脚軸]</option>
-                    <option value="dyn_flex_fwd">🙇 立位体前屈 (屈曲可動域)</option>
-                    <option value="dyn_flex_bwd">🤸 立位体後屈 (伸展可動域)</option>
-                    <option value="dyn_shoulder_r">👐 肩複合可動性 [右上オーバー]</option>
-                    <option value="dyn_shoulder_l">👐 肩複合可動性 [左上オーバー]</option>
-                </optgroup>
-            </select>
-            
-            <select id="durationSelect" style="width: 95px;">
-                <option value="5000" selected>⏱️ 5秒記録</option>
-                <option value="10000">⏱️ 10秒記録</option>
-                <option value="15000">⏱️ 15秒記録</option>
-            </select>
-            
-            <label class="toggle-label">
-                <input type="checkbox" id="showSwayAlert" checked>
-                <span>動揺警告</span>
-            </label>
-            
-            <button id="recBtn" disabled>🔴 測定スタート</button>
+<!-- 4面（前面/左側面/後面/右側面）を撮り終えた直後の確認・修正画面。
+     js/ui/batchReview.js が制御する。確定するまでは各ポーズは内部的に
+     draft保存のみで、履歴一覧には出さない(js/data/dataService.js参照)。
+     v4.6.14より、履歴の「4面まとめ」表示（確定済みデータの閲覧）でも
+     同じ画面を再利用している（その場合は確定/撮り直しボタンを隠し、
+     代わりに閉じるボタンを出す）。 -->
+<div id="batchReviewOverlay">
+    <div class="dash-header">
+        <div>
+            <h2 class="dash-title" id="batchReviewTitle">✅ 4面 撮影完了 — 確認・修正</h2>
+            <div style="color:#8892b0; font-size: 14px; margin-top:5px;" id="batchReviewSubtitle">気になるポーズがあれば、確定する前に個別に微調整・撮り直しができます</div>
         </div>
-
-        <!-- B. Recording Playback Control Panel (Initially Hidden) -->
-        <div class="controls" id="playbackControls" style="display:none;">
-            <button id="backToCamBtn">🔙 再測定へ</button>
-            <button id="playPauseBtn">▶ 再生</button>
-            <input type="range" id="timelineSlider" min="0" max="100" value="0">
-            <span id="frameCounter" style="color:var(--accent-cyan); font-weight:800; font-size: 13px; font-variant-numeric: tabular-nums; min-width: 60px; text-align: center;">0 / 0</span>
-            <button id="editFrameBtn">✂️ 微調整</button>
-            <button id="exportVideoBtn" style="margin-left:auto;">🎥 動画出力</button>
-            <button id="printReportBtn" onclick="window.prepareAndPrintReport()">📊 レポート表示</button>
+        <div class="dash-actions">
+            <button class="dash-close" id="batchReviewCsvBtn">📊 CSV書き出し(4面分)</button>
+            <button class="dash-print" id="batchReviewReportBtn" style="display:none;">📄 レポートを見る</button>
+            <button class="dash-print" id="batchReviewFinalizeBtn">✅ この内容で確定してレポート作成 📊</button>
+            <button class="dash-close" id="batchReviewCloseBtn" style="display:none;">✖ 閉じる</button>
         </div>
     </div>
+    <div class="batch-review-grid" id="batchReviewGrid"></div>
 </div>
 
-<!-- Hidden native elements -->
-<video id="video" autoplay playsinline muted></video>
-
-<!-- Load Main Script App Core Logic -->
-<script src="app.js"></script>
-
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
