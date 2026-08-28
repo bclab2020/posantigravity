@@ -1524,22 +1524,22 @@ select:hover { border-color: var(--accent-blue); }
         overflow: hidden;
     }
     
-    /* 左側：ブランド・タイトルエリア（浮かせる配置に変更） */
+    /* 左側：ブランド・タイトルエリア */
     .auth-modal .modal-header {
         position: absolute;
-        left: 8%; top: 50%;
+        left: 6%; top: 50%;
         transform: translateY(-50%);
         width: 40%;
         margin-bottom: 0;
         border-bottom: none;
-        border-right: none; /* 境界線を消去して一体感を出す */
+        border-right: none;
         padding: 0;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        align-items: flex-start; /* 左寄せにして洗練された印象に */
-        background: transparent; /* 背景を透明にして一体化 */
+        align-items: flex-start; /* 左寄せ */
+        background: transparent;
         text-align: left;
     }
 
@@ -1552,7 +1552,7 @@ select:hover { border-color: var(--accent-blue); }
     }
 
     .auth-modal .modal-header h3 {
-        font-size: 32px;
+        font-size: 30px;
         line-height: 1.3;
         margin-top: 10px;
         color: var(--text-primary);
@@ -1573,10 +1573,10 @@ select:hover { border-color: var(--accent-blue); }
         letter-spacing: 0.5px;
     }
 
-    /* 右側：フォーム入力エリア（グラスモルフィズムのカードとして浮かせる） */
+    /* 右側：フォーム入力エリア（グラスモルフィズムのカード） */
     .auth-modal .modal-body {
         position: absolute;
-        right: 8%; top: 50%;
+        right: 6%; top: 50%;
         transform: translateY(-50%);
         width: 440px;
         max-height: 85vh;
@@ -1585,7 +1585,6 @@ select:hover { border-color: var(--accent-blue); }
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        /* グラスモルフィズム・カードスタイル */
         background: rgba(10, 17, 40, 0.72);
         backdrop-filter: blur(25px);
         -webkit-backdrop-filter: blur(25px);
@@ -1595,7 +1594,6 @@ select:hover { border-color: var(--accent-blue); }
         overflow-y: auto;
     }
 
-    /* 内部要素の幅制限を解除 */
     .auth-modal #authSignupForm,
     .auth-modal #authSignupConfirm,
     .auth-modal #authLoginForm,
@@ -1611,5 +1609,20 @@ select:hover { border-color: var(--accent-blue); }
     
     .auth-modal .auth-tabs {
         margin-bottom: 24px;
+    }
+}
+
+/* 1024px以上のPCデスクトップ幅：中央寄せに固定し、余白のバランスを最適化 */
+@media (min-width: 1024px) {
+    .auth-modal .modal-header {
+        left: auto;
+        right: calc(50% + 50px); /* 画面中央から左に50pxの位置を右端にする */
+        width: 420px;
+    }
+    
+    .auth-modal .modal-body {
+        right: auto;
+        left: calc(50% + 50px); /* 画面中央から右に50pxの位置を左端にする */
+        width: 440px;
     }
 }
