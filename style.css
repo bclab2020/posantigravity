@@ -1496,7 +1496,7 @@ select:hover { border-color: var(--accent-blue); }
 }
 
 /* =============================================================================
-   ログイン・会員登録画面（フュージョン・中央カードレイアウト）
+   ログイン・会員登録画面（インテグレーテッド・ワイドカード・スプリット）
    ========================================================================== */
 
 /* 全画面背景オーバーレイ（ログイン前） */
@@ -1528,7 +1528,7 @@ select:hover { border-color: var(--accent-blue); }
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    overflow-y: auto;
+    overflow: hidden;
     z-index: var(--z-modal);
 }
 
@@ -1537,13 +1537,165 @@ select:hover { border-color: var(--accent-blue); }
     display: flex !important;
 }
 
-/* 上半分のカード（ブランド・ヘッダー） */
-.auth-modal .modal-header {
-    width: 90%;
-    max-width: 460px;
+/* フェードイン・フェードアウト アニメーション定義 */
+.auth-top-screen, .auth-form-container {
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    opacity: 1;
+    transform: scale(1);
+}
+.auth-top-screen.fade-out {
+    opacity: 0;
+    transform: scale(0.95);
+    pointer-events: none;
+}
+.auth-form-container.fade-in {
+    animation: authFadeIn 0.4s ease forwards;
+}
+@keyframes authFadeIn {
+    from { opacity: 0; transform: scale(1.02); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* -----------------------------------------------------------------------------
+   アプリ起動時：ブランドTOP画面レイアウト
+   ----------------------------------------------------------------------------- */
+.auth-top-screen {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 20px;
+    text-align: center;
+}
+
+.auth-top-brand {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.auth-top-logo {
+    font-family: 'Outfit', sans-serif;
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--text-primary);
+    text-shadow: 0 0 25px rgba(100, 255, 218, 0.4);
+    line-height: 1.2;
+}
+
+.auth-top-badge {
+    margin-top: 10px;
+    background: var(--accent-blue);
+    color: #050811;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.auth-top-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 5px;
+    margin-bottom: 60px;
+    opacity: 0.8;
+}
+
+/* 高機能スタートボタン */
+.auth-start-btn {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: rgba(10, 17, 40, 0.8);
+    border: 2px solid var(--accent-teal);
+    color: var(--accent-teal);
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 0 20px rgba(100, 255, 218, 0.2);
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.auth-start-btn:hover {
+    background: var(--accent-teal);
+    color: #050811;
+    box-shadow: 0 0 35px rgba(100, 255, 218, 0.6);
+    transform: scale(1.05);
+}
+
+.auth-start-btn:active {
+    transform: scale(0.98);
+}
+
+.auth-start-text {
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    z-index: 2;
+}
+
+/* ホバー時の波紋パルスエフェクト */
+.auth-start-btn::before {
+    content: "";
+    position: absolute;
+    top: -6px; left: -6px; right: -6px; bottom: -6px;
+    border-radius: 50%;
+    border: 1px solid rgba(100, 255, 218, 0.3);
+    animation: authStartPulse 2s infinite;
+    pointer-events: none;
+}
+
+@keyframes authStartPulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.08); opacity: 0.4; }
+    100% { transform: scale(1.15); opacity: 0; }
+}
+
+.auth-top-footer {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 60px;
+    opacity: 0.5;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* -----------------------------------------------------------------------------
+   STARTクリック後：融合型ワイドカード本体
+   モバイル・タブレット(900px未満)では縦長に結合された1つのカード
+   ----------------------------------------------------------------------------- */
+.auth-form-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.auth-form-container .modal-header,
+.auth-form-container .modal-body {
     background: rgba(10, 17, 40, 0.75);
     backdrop-filter: blur(25px);
     -webkit-backdrop-filter: blur(25px);
+    box-sizing: border-box;
+}
+
+/* モバイル時の縦連結レイアウト */
+.auth-form-container .modal-header {
+    width: 90%;
+    max-width: 460px;
     border-top: 1px solid rgba(100, 255, 218, 0.15);
     border-left: 1px solid rgba(100, 255, 218, 0.15);
     border-right: 1px solid rgba(100, 255, 218, 0.15);
@@ -1554,7 +1706,6 @@ select:hover { border-color: var(--accent-blue); }
     border-bottom-right-radius: 0;
     padding: 30px 30px 10px 30px;
     margin: 0;
-    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1562,13 +1713,32 @@ select:hover { border-color: var(--accent-blue); }
     box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
 }
 
-.auth-modal .modal-header .auth-modal-logo {
+.auth-form-container .modal-body {
+    width: 90%;
+    max-width: 460px;
+    border-bottom: 1px solid rgba(100, 255, 218, 0.15);
+    border-left: 1px solid rgba(100, 255, 218, 0.15);
+    border-right: 1px solid rgba(100, 255, 218, 0.15);
+    border-top: none;
+    border-bottom-left-radius: var(--radius-lg);
+    border-bottom-right-radius: var(--radius-lg);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    padding: 20px 30px 35px 30px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+/* 共通パーツのスタイリング */
+.auth-form-container .modal-header .auth-modal-logo {
     transform: scale(1.1);
     margin-bottom: 16px;
     box-shadow: 0 0 20px rgba(100, 255, 218, 0.3);
 }
 
-.auth-modal .modal-header h3 {
+.auth-form-container .modal-header h3 {
     font-size: 22px;
     line-height: 1.3;
     margin: 8px 0;
@@ -1577,8 +1747,7 @@ select:hover { border-color: var(--accent-blue); }
     font-family: 'Outfit', sans-serif;
 }
 
-/* キャッチフレーズの追加 */
-.auth-modal .modal-header::after {
+.auth-form-container .modal-header::after {
     content: "High-Performance Motion Scan & Analytics Engine";
     font-size: 11px;
     color: var(--text-secondary);
@@ -1590,44 +1759,100 @@ select:hover { border-color: var(--accent-blue); }
     letter-spacing: 0.5px;
 }
 
-/* 下半分のカード（入力フォーム） */
-.auth-modal .modal-body {
-    width: 90%;
-    max-width: 460px;
-    background: rgba(10, 17, 40, 0.75);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
-    border-bottom: 1px solid rgba(100, 255, 218, 0.15);
-    border-left: 1px solid rgba(100, 255, 218, 0.15);
-    border-right: 1px solid rgba(100, 255, 218, 0.15);
-    border-top: none;
-    border-bottom-left-radius: var(--radius-lg);
-    border-bottom-right-radius: var(--radius-lg);
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-    padding: 20px 30px 35px 30px;
-    margin: 0;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    overflow-y: visible;
-}
-
 /* フォームの横幅をカード幅いっぱいにフィットさせる */
-.auth-modal #authSignupForm,
-.auth-modal #authSignupConfirm,
-.auth-modal #authLoginForm,
-.auth-modal #authGuestForm,
-.auth-modal .auth-tabs,
-.auth-modal .error-text,
-.auth-modal .help-text {
+.auth-form-container #authSignupForm,
+.auth-form-container #authSignupConfirm,
+.auth-form-container #authLoginForm,
+.auth-form-container #authGuestForm,
+.auth-form-container .auth-tabs,
+.auth-form-container .error-text,
+.auth-form-container .help-text {
     max-width: 100%;
     width: 100%;
     margin-left: 0;
     margin-right: 0;
 }
 
-.auth-modal .auth-tabs {
+.auth-form-container .auth-tabs {
     margin-bottom: 20px;
+}
+
+/* 
+   PCデスクトップ幅 (900px以上)：
+   縦に連結していた2つのカードを、1枚の「横長ワイドカード」へと再編し融合させる
+*/
+@media (min-width: 900px) {
+    .auth-modal {
+        overflow: hidden;
+    }
+
+    /* 左側：カード内のブランドエリア */
+    .auth-form-container .modal-header {
+        position: absolute;
+        top: 50%;
+        left: calc(50% - 450px); /* 900px幅カードの左端 */
+        transform: translateY(-50%);
+        width: 400px; /* カード左側の幅 */
+        height: 600px; /* カード全体の高さ */
+        
+        /* 枠線と角丸の再定義：左・上・下を囲み、右側は結合 */
+        border-top: 1px solid rgba(100, 255, 218, 0.15);
+        border-left: 1px solid rgba(100, 255, 218, 0.15);
+        border-bottom: 1px solid rgba(100, 255, 218, 0.15);
+        border-right: none;
+        border-top-left-radius: var(--radius-lg);
+        border-bottom-left-radius: var(--radius-lg);
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        
+        padding: 40px;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        background: rgba(8, 14, 32, 0.85); /* 左側をやや暗くして対比を出す */
+        box-shadow: -15px 20px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    /* 右側：カード内のフォームエリア */
+    .auth-form-container .modal-body {
+        position: absolute;
+        top: 50%;
+        left: calc(50% - 50px); /* ヘッダーのすぐ右に隙間なく連結 (400px幅分右に移動) */
+        transform: translateY(-50%);
+        width: 500px; /* カード右側の幅 */
+        height: 600px; /* カード全体の高さ */
+        
+        /* 枠線と角丸の再定義：右・上・下を囲む */
+        border-top: 1px solid rgba(100, 255, 218, 0.15);
+        border-right: 1px solid rgba(100, 255, 218, 0.15);
+        border-bottom: 1px solid rgba(100, 255, 218, 0.15);
+        border-left: none;
+        border-top-right-radius: var(--radius-lg);
+        border-bottom-right-radius: var(--radius-lg);
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        
+        padding: 45px 50px;
+        justify-content: center;
+        background: rgba(12, 21, 46, 0.75);
+        box-shadow: 15px 20px 40px rgba(0, 0, 0, 0.4);
+        overflow-y: auto;
+    }
+
+    /* ワイドカード用に文字サイズやロゴの調整 */
+    .auth-form-container .modal-header .auth-modal-logo {
+        transform: scale(1.15);
+        margin-bottom: 25px;
+    }
+    
+    .auth-form-container .modal-header h3 {
+        font-size: 24px;
+        margin: 12px 0;
+    }
+
+    .auth-form-container .modal-header::after {
+        font-size: 11.5px;
+        margin-top: 12px;
+        max-width: 290px;
+    }
 }

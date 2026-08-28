@@ -21,6 +21,27 @@ export function initAuthUI(dataService, onAuthResolved) {
         return;
     }
 
+    // STARTボタン遷移処理（2026-08-28追加）
+    var startBtn = document.getElementById('authStartBtn');
+    var topScreen = document.getElementById('authTopScreen');
+    var formContainer = document.getElementById('authFormContainer');
+    if (startBtn && topScreen && formContainer) {
+        // 毎回認証モーダルが開くたびに、TOP画面を表示状態に戻しておく
+        topScreen.style.display = 'flex';
+        topScreen.classList.remove('fade-out');
+        formContainer.style.display = 'none';
+        formContainer.classList.remove('fade-in');
+        
+        startBtn.onclick = function () {
+            topScreen.classList.add('fade-out');
+            setTimeout(function () {
+                topScreen.style.display = 'none';
+                formContainer.style.display = 'block';
+                formContainer.classList.add('fade-in');
+            }, 400); // 400msのフェードアウト後にフォームを表示
+        };
+    }
+
     var authModal = document.getElementById('authModal');
     var tabSignup = document.getElementById('authTabSignup');
     var tabLogin = document.getElementById('authTabLogin');

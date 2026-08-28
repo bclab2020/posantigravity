@@ -17,7 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Roboto+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="style.css?v=4.9.21.4">
+    <link rel="stylesheet" href="style.css?v=4.9.21.6">
 </head>
 <body>
 
@@ -130,7 +130,7 @@
                                 <option value="r_side">🧍 右側面</option>
                             </optgroup>
                             <optgroup label="■ 重心動揺">
-                                <option value="sway">⚖️ 重���動揺</option>
+                                <option value="sway">⚖️ 重心動揺</option>
                             </optgroup>
                             <optgroup label="■ 動的機能評価">
                                 <option value="dyn_overhead">🏋️ OHS [前面]</option>
@@ -169,7 +169,7 @@
                         <label>カメラキャリブレーション（任意）</label>
                         <button type="button" id="setupCalibrateBtn" class="btn gray-btn" style="width:100%;">🎯 カメラキャリブレーションを取る（固定設置の場合）</button>
                         <div class="setup-orientation-hint" id="calibStatusHint" style="display:none; color:var(--accent-teal);">✅ 校正済み</div>
-                        <!-- 2026-08-03追加: 三脚等でカメラを完��固定できる場合の、より高精度な
+                        <!-- 2026-08-03追加: 三脚等でカメラを完全固定できる場合の、より高精度な
                              追加オプション。実寸が分かっているボード/マットの4隅にArUcoマーカーを
                              貼って撮影すると、px/mmスケール校正（全モード共通）に加え、重心動揺
                              モードの足首位置を実寸mmの2軸で測定できるようになる。手持ち・簡易
@@ -213,7 +213,7 @@
                             <canvas id="canvasMP"></canvas>
                             <canvas id="webgl-canvas"></canvas>
 
-                            <!-- 2026-08-07追加: キャリブレーション時（アルコ・タップ両方）にカメラ��
+                            <!-- 2026-08-07追加: キャリブレーション時（アルコ・タップ両方）にカメラを
                                  おおむね合わせるための目安線。#calibGuideLinesが表示されている間だけ
                                  出す（js/ui/shootFlow.js参照）。pointer-events:noneで、タップ校正時の
                                  マット端タップ操作を一切邪魔しないようにしている。 -->
@@ -280,7 +280,7 @@
                              操作スタック(#uiFloatingLayer)から独立させ、左下の固定位置に配置する
                              （以前はスタック内の最下部にあり、実機でナビゲーションバーに下半分が
                              隠れてしまっていたため）。position:fixedの基準がuiFloatingLayerの
-                             transform���引っ張られないよう、意図的にその外（.visual-areaの直接の
+                             transformに引っ張られないよう、意図的にその外（.visual-areaの直接の
                              子）に置いている。 -->
                         <button type="button" id="shootBackToSetupBtn" class="ui-top-btn">◀ モード選択に戻る</button>
 
@@ -354,7 +354,7 @@
                     <button id="toggleAnalyticsBtn" class="ui-top-btn" style="position:fixed; right:20px; top:20px; z-index:1600; border-color:var(--accent-teal); color:var(--accent-teal); background:rgba(5,8,17,0.85); backdrop-filter:blur(5px); display:none;">📊 パラメーター</button>
 
                     <div class="analytics-area" id="analyticsArea">
-                        <!-- ��イアウト方針(ユーザー提供の横書きラフ資料を採用): タイトル+サブタイトルと
+                        <!-- レイアウト方針(ユーザー提供の横書きラフ資料を採用): タイトル+サブタイトルと
                              4つのパラメーターを、まず「普通の横書き」で1行ずつ(.ticker-header /
                              .ticker-metrics)組んでおき、その帯全体をCSSのtransform:rotate(90deg)で
                              丸ごと90度回転させて縦のドロワーに収める方式。文字ごとにwriting-mode:
@@ -365,7 +365,7 @@
                              .analytics-area自体を縦スクロール可能にしている(タイトルは列として
                              独立しているため、スクロールしても読める範囲に留まる)。
                              #bar-l-knee等のバー要素はこの新レイアウトでは非表示にしているが、
-                             webglHud.jsが引き続��style.heightを更新するためDOMには残してある。 -->
+                             webglHud.jsが引き続きstyle.heightを更新するためDOMには残してある。 -->
                         <div class="ticker-rotated">
                             <div class="ticker-header">
                                 <h1 class="panel-title">Biomechanical Load</h1>
@@ -470,66 +470,83 @@
      ============================================================ -->
 
 <div id="authModal" class="modal-panel auth-modal">
-    <div class="modal-header">
-        <div class="auth-modal-logo">ÉLITE PERFORMANCE <span class="badge">Precision in Motion</span></div>
-        <h3>ようこそ ÉLITE PERFORMANCE へ</h3>
+    <!-- アプリ起動時のブランドTOP画面 -->
+    <div id="authTopScreen" class="auth-top-screen">
+        <div class="auth-top-brand">
+            <div class="auth-top-logo">ÉLITE PERFORMANCE</div>
+            <div class="auth-top-badge">Precision in Motion</div>
+        </div>
+        <div class="auth-top-title">BIOMECHANICS ANALYTICS SYSTEM</div>
+        <button type="button" id="authStartBtn" class="auth-start-btn">
+            <span class="auth-start-text">START</span>
+            <span class="auth-start-glow"></span>
+        </button>
+        <p class="auth-top-footer">Press Start to Begin System Initialization</p>
     </div>
-    <div class="modal-body">
-        <div class="auth-tabs">
-            <button type="button" id="authTabSignup" class="analysis-tab active">新規会員登録</button>
-            <button type="button" id="authTabLogin" class="analysis-tab">ログイン</button>
-            <button type="button" id="authTabGuest" class="analysis-tab">ゲスト</button>
-        </div>
 
-        <div id="authSignupForm">
-            <div class="input-field"><label>お名前</label><input type="text" id="authSignupName" placeholder="山田 太郎"></div>
-            <div class="input-field"><label>メールアドレス</label><input type="email" id="authSignupEmail" placeholder="you@example.com"></div>
-            <div class="input-field"><label>パスワード（6文字以上）</label>
-                <div class="password-field">
-                    <input type="password" id="authSignupPassword" placeholder="••••••••">
-                    <button type="button" class="password-toggle-btn" data-target="authSignupPassword" aria-label="パスワードを表示">表示</button>
+    <!-- STARTクリック後にフェードインする認証フォーム画面 -->
+    <div id="authFormContainer" class="auth-form-container" style="display:none;">
+        <div class="modal-header">
+            <div class="auth-modal-logo">ÉLITE PERFORMANCE <span class="badge">Precision in Motion</span></div>
+            <h3>ようこそ ÉLITE PERFORMANCE へ</h3>
+        </div>
+        <div class="modal-body">
+            <div class="auth-tabs">
+                <button type="button" id="authTabSignup" class="analysis-tab active">新規会員登録</button>
+                <button type="button" id="authTabLogin" class="analysis-tab">ログイン</button>
+                <button type="button" id="authTabGuest" class="analysis-tab">ゲスト</button>
+            </div>
+
+            <div id="authSignupForm">
+                <div class="input-field"><label>お名前</label><input type="text" id="authSignupName" placeholder="山田 太郎"></div>
+                <div class="input-field"><label>メールアドレス</label><input type="email" id="authSignupEmail" placeholder="you@example.com"></div>
+                <div class="input-field"><label>パスワード（6文字以上）</label>
+                    <div class="password-field">
+                        <input type="password" id="authSignupPassword" placeholder="••••••••">
+                        <button type="button" class="password-toggle-btn" data-target="authSignupPassword" aria-label="パスワードを表示">表示</button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div class="input-field" style="flex:1;"><label>身長 (cm)</label><input type="number" id="authSignupHeight" value="170"></div>
+                    <div class="input-field" style="flex:1;"><label>足サイズ (cm)</label><input type="number" id="authSignupFootSize" value="25"></div>
+                </div>
+                <button id="authSignupBtn" class="btn primary-btn" style="width:100%;">確認画面へ</button>
+            </div>
+
+            <div id="authSignupConfirm" style="display:none;">
+                <p class="help-text" style="margin:0 0 14px 0;">以下の内容で登録します。よろしければ「この内容で登録する」を押してください。</p>
+                <div class="confirm-list">
+                    <div class="confirm-row"><span class="confirm-label">お名前</span><span class="confirm-value" id="confirmName"></span></div>
+                    <div class="confirm-row"><span class="confirm-label">メールアドレス</span><span class="confirm-value" id="confirmEmail"></span></div>
+                    <div class="confirm-row"><span class="confirm-label">身長</span><span class="confirm-value" id="confirmHeight"></span></div>
+                    <div class="confirm-row"><span class="confirm-label">足サイズ</span><span class="confirm-value" id="confirmFootSize"></span></div>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:18px;">
+                    <button id="authSignupBackBtn" class="btn gray-btn" style="flex:1;">戻って修正する</button>
+                    <button id="authSignupConfirmBtn" class="btn primary-btn" style="flex:1;">登録する</button>
                 </div>
             </div>
-            <div style="display:flex; gap:10px;">
-                <div class="input-field" style="flex:1;"><label>身長 (cm)</label><input type="number" id="authSignupHeight" value="170"></div>
-                <div class="input-field" style="flex:1;"><label>足サイズ (cm)</label><input type="number" id="authSignupFootSize" value="25"></div>
-            </div>
-            <button id="authSignupBtn" class="btn primary-btn" style="width:100%;">確認画面へ</button>
-        </div>
 
-        <div id="authSignupConfirm" style="display:none;">
-            <p class="help-text" style="margin:0 0 14px 0;">以下の内容で登録します。よろしければ「この内容で登録する」を押してください。</p>
-            <div class="confirm-list">
-                <div class="confirm-row"><span class="confirm-label">お名前</span><span class="confirm-value" id="confirmName"></span></div>
-                <div class="confirm-row"><span class="confirm-label">メールアドレス</span><span class="confirm-value" id="confirmEmail"></span></div>
-                <div class="confirm-row"><span class="confirm-label">身長</span><span class="confirm-value" id="confirmHeight"></span></div>
-                <div class="confirm-row"><span class="confirm-label">足サイズ</span><span class="confirm-value" id="confirmFootSize"></span></div>
-            </div>
-            <div style="display:flex; gap:10px; margin-top:18px;">
-                <button id="authSignupBackBtn" class="btn gray-btn" style="flex:1;">戻って修正する</button>
-                <button id="authSignupConfirmBtn" class="btn primary-btn" style="flex:1;">登録する</button>
-            </div>
-        </div>
-
-        <div id="authLoginForm" style="display:none;">
-            <div class="input-field"><label>メールアドレス</label><input type="email" id="authLoginEmail" placeholder="you@example.com"></div>
-            <div class="input-field"><label>パスワード</label>
-                <div class="password-field">
-                    <input type="password" id="authLoginPassword" placeholder="••••••••">
-                    <button type="button" class="password-toggle-btn" data-target="authLoginPassword" aria-label="パスワードを表示">表示</button>
+            <div id="authLoginForm" style="display:none;">
+                <div class="input-field"><label>メールアドレス</label><input type="email" id="authLoginEmail" placeholder="you@example.com"></div>
+                <div class="input-field"><label>パスワード</label>
+                    <div class="password-field">
+                        <input type="password" id="authLoginPassword" placeholder="••••••••">
+                        <button type="button" class="password-toggle-btn" data-target="authLoginPassword" aria-label="パスワードを表示">表示</button>
+                    </div>
                 </div>
+                <button id="authLoginBtn" class="btn primary-btn" style="width:100%;">ログイン</button>
             </div>
-            <button id="authLoginBtn" class="btn primary-btn" style="width:100%;">ログイン</button>
+
+            <div id="authGuestForm" style="display:none;">
+                <p class="help-text" style="margin:0 0 14px 0; font-size:12px;">登録せずにアプリを試せます。測定データはこの端末にのみ保存され、他の端末やアカウントとは共有されません（後から会員登録すると引き継げます）。</p>
+                <button id="authGuestBtn" class="btn primary-btn" style="width:100%;">ゲストとして始める</button>
+            </div>
+
+            <p class="error-text" id="authErrorMsg" style="color:var(--accent-red); font-size:12px; display:none; margin-top:10px;"></p>
+
+            <p class="help-text" style="text-align:center; margin-top:18px;">※本アプリは開発段階の検証運用です。ご利用の際は事前にご案内した内容にご同意のうえお使いください。</p>
         </div>
-
-        <div id="authGuestForm" style="display:none;">
-            <p class="help-text" style="margin:0 0 14px 0; font-size:12px;">登録せずにアプリを試せます。測定データはこの端末にのみ保存され、他の端末やアカウントとは共有されません（後から会員登録すると引き継げます）。</p>
-            <button id="authGuestBtn" class="btn primary-btn" style="width:100%;">ゲストとして始める</button>
-        </div>
-
-        <p class="error-text" id="authErrorMsg" style="color:var(--accent-red); font-size:12px; display:none; margin-top:10px;"></p>
-
-        <p class="help-text" style="text-align:center; margin-top:18px;">※本アプリは開発段階の検証運用です。ご利用の際は事前にご案内した内容にご同意のうえお使いください。</p>
     </div>
 </div>
 
@@ -608,7 +625,7 @@
 
 <!-- 動作解析（動画/連続撮影）の「撮影確認」画面。js/ui/dynConfirm.js が
      制御する。#batchReviewOverlay（静止4方向）と全く同じ役割・同じ見た目の
-     オーバーレイを、動作解析1件用に用意したもの。撮影直後（未確定���ード、
+     オーバーレイを、動作解析1件用に用意したもの。撮影直後（未確定モード、
      dynConfirmFinalizeBtnで確定・自動レポート表示）だけでなく、v4.6.24より
      履歴一覧からこのモードのデータをタップした時にも同じ画面を再利用する
      （履歴モード、dynConfirmReportBtn/dynConfirmCloseBtnを表示）。
